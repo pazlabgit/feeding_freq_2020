@@ -1,0 +1,26 @@
+---
+title: "Import Fastq Files"
+author: Henry Paz and Vanessa De La Guardia
+output: html_notebook
+---
+
+Import paired-end demultiplexed fastq files.
+
+```{r, engine='bash'}
+#import paired-end demultiplexed fastq files
+qiime tools import \
+  --type 'SampleData[PairedEndSequencesWithQuality]' \
+  --input-path fastq_files \
+  --input-format CasavaOneEightSingleLanePerSampleDirFmt \
+  --output-path demux_paired_end.qza
+
+#make visualizations directory
+mkdir visualizations
+
+#summarize demultiplexing (sequences per sample and distribution of sequence quality at each position)
+qiime demux summarize \
+  --i-data demux_paired_end.qza \
+  --o-visualization visualizations/demux_paired_end.qzv 
+
+#qiime tools view visualizations/demux_paired_end.qzv  
+```
