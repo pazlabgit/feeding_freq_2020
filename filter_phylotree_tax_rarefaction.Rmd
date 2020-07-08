@@ -1,0 +1,191 @@
+---
+title: "QF, Generate phylogenetic tree, assign taxonomy and Rarefaction "
+author: Henry Paz and Vanessa De La Guardia
+output: html_notebook
+---
+
+Quality filtering
+
+Filter blank samples and singletons.
+```{r, engine='bash'}
+#create metadata file specifying samples to remove
+printf "#SampleID\nS119\nS319" > blank_samples.txt
+
+#remove blank samples
+qiime feature-table filter-samples \
+  --i-table table_deblur.qza \
+  --m-metadata-file blank_samples.txt \
+  --p-exclude-ids \
+  --o-filtered-table table_deblur_nb.qza
+```
+
+
+Generate a phylogenetic tree
+```{r, engine='bash'}
+qiime phylogeny align-to-tree-mafft-fasttree \
+  --i-sequences rep_seqs_deblur.qza \
+  --p-n-threads 0 \
+  --o-alignment aligned_rep_seqs.qza \
+  --o-masked-alignment masked_aligned_rep_seqs.qza \
+  --o-tree unrooted_tree.qza \
+  --o-rooted-tree rooted_tree.qza
+```
+
+
+Assign Taxonomy.
+```{r, engine='bash'}
+#create directory
+mkdir exported
+mkdir taxonomy
+
+#download the trained green genes classifier (V4, 515F/806R primer pair)
+wget -P taxonomy \
+  https://data.qiime2.org/2019.7/common/gg-13-8-99-515-806-nb-classifier.qza
+  
+#assign taxonomy
+qiime feature-classifier classify-sklearn \
+  --i-classifier taxonomy/gg-13-8-99-515-806-nb-classifier.qza \
+  --i-reads rep_seqs_deblur.qza \
+  --o-classification taxonomy/gg_taxonomy.qza
+  
+qiime tools export \
+  --input-path taxonomy/gg_taxonomy.qza \
+  --output-path exported/gg_taxonomy
+
+#filter out asv classified within the Archaea kingdom
+qiime taxa filter-table \
+  --i-table table_deblur_nb.qza \
+  --i-taxonomy taxonomy/gg_taxonomy.qza \
+  --p-exclude Archaea \
+  --o-filtered-table table_deblur_qc.qza
+```
+
+
+Rarefy ASVs table and generate rarefaction curves.
+```{r, engine='bash'}
+#define even sampling depth
+qiime feature-table summarize \
+  --i-table table_deblur_qc.qza \
+  --m-sample-metadata-file metadata/metadata_feedfreq.txt \
+  --o-visualization visualizations/table_deblur_filtered_summary.qzv
+#qiime tools view visualizations/table_deblur_filtered_summary.qzv
+
+#rarefy samples
+qiime feature-table rarefy \
+  --i-table table_deblur_qc.qza \
+  --p-sampling-depth 4600 \
+  --o-rarefied-table table_deblur_rarefied.qza
+  
+qiime tools export \
+  --input-path table_deblur_rarefied.qza \
+  --output-path exported/table_deblur_rarefied 
+
+#rarefaction curves  
+qiime diversity alpha-rarefaction \
+  --i-table table_deblur_rarefied.qza \
+  --i-phylogeny rooted_tree.qza \
+  --p-min-depth 1 \
+  --p-max-depth 4600 \
+  --p-metrics observed_otus \
+  --p-metrics shannon \
+  --p-metrics goods_coverage \
+  --m-metadata-file metadata/metadata_feedfreq.txt \
+  --p-steps 10 \
+  --p-iterations 10 \
+  --o-visualization visualizations/alpha_rarefaction_plots.qzv 
+#qiime tools view visualizations/alpha_rarefaction_plots.qzv 
+
+qiime tools export \
+  --input-path visualizations/alpha_rarefaction_plots.qzv \
+  --output-path exported/alpha_rarefaction_plots
+```
+
+Generate rarefaction plot.
+
+```{r}
+#load libraries
+library(tidyverse)
+library(ggplot2)
+library(ggpubr)
+
+#Create directory
+dir.create("figures")
+
+#create rarefaction dataset
+rarefaction_asv <- read_csv("exported/alpha_rarefaction_plots/observed_otus.csv") 
+
+#reshaping from wide format to long format
+rare_asv_long <- rarefaction_asv %>% 
+  gather(depth, value, "depth-1_iter-1":"depth-4600_iter-10")
+
+#look for my last column "depth-4600_iter-10"
+
+#rename vector
+rare_asv_long$depth <- gsub("_.*","",rare_asv_long$depth)
+rare_asv_long$depth <- gsub("\\w*-","",rare_asv_long$depth)
+
+#convert vector type
+str(rare_asv_long)
+
+rare_asv_long <- rare_asv_long %>% 
+  mutate(trt=as.character(trt)) %>% 
+  mutate(time=as.character(time)) %>% 
+  mutate(depth=as.numeric(depth))
+
+#breed data
+breed_data <- rare_asv_long %>% 
+  group_by(breed, depth) %>% 
+  summarise(median=median(value),
+            q1=quantile(value,0.25),
+            q3=quantile(value,0.75))
+
+
+#breed graph
+breed_asv <- ggplot(breed_data, aes(x=depth, y=median, color=breed, shape=breed)) + geom_line(position=position_dodge(0.02)) + geom_point(size=3, position=position_dodge(0.02)) + labs(title="Breed",x="Sequencing Depth", y="Amplicon Sequence Variants", color="Breed", shape="Breed")+theme_bw() + theme(plot.title=element_text(color="black", size=16, face="bold", hjust=0.5), axis.line=element_line(color="black", size=1), axis.ticks=element_line(color="black"), axis.text=element_text(color="black", size=12, face="bold"), axis.title=element_text(color="black", size=16, face="bold"), legend.title=element_text(color="black", size=16, face="bold"), legend.text=element_text(color="black", size=15, face="bold"), panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + scale_colour_manual(values=c("Red","Blue")) + scale_shape_manual(values=c(15,16))
+
+
+#time data
+time_data <- rare_asv_long %>% 
+  group_by(time, depth) %>% 
+  summarise(median=median(value),
+            q1=quantile(value,0.25),
+            q3=quantile(value,0.75))
+
+#specify order of time levels
+time_data$time <- factor(time_data$time, levels = c("0","6","12","18","24"))
+
+#time graph
+time_asv <- ggplot(time_data, aes(x=depth, y=median, color=time, shape=time)) + geom_line(position=position_dodge(0.02)) + geom_point(size=3, position=position_dodge(0.02)) + labs(title="Time",x="Sequencing Depth", y="Amplicon Sequence Variants", color="time", shape="time")+ theme_bw() + theme(plot.title=element_text(color="black", size=16, face="bold", hjust=0.5), axis.line=element_line(color="black", size=1), axis.ticks=element_line(color="black"), axis.text=element_text(color="black", size=12, face="bold"), axis.title=element_text(color="black", size=16, face="bold"), legend.title=element_text(color="black", size=16, face="bold"), legend.text=element_text(color="black", size=15, face="bold"), panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + scale_color_manual(name="Time (h)", values=c("Black","Red","Blue","Green","Purple"), limits=c("0","6","12","18","24")) + scale_shape_manual(name="Time (h)", values=c(20,18,15,8,17))
+
+
+#trt data
+trt_data <- rare_asv_long %>% 
+  group_by(trt, depth) %>% 
+  summarise(median=median(value),
+            q1=quantile(value,0.25),
+            q3=quantile(value,0.75))
+
+#trt graph
+trt_asv <- ggplot(trt_data, aes(x=depth, y=median, color=trt, shape=trt)) + geom_line(position=position_dodge(0.02)) + geom_point(size=3, position=position_dodge(0.02)) + labs(title="Frequency",x="Sequencing Depth", y="Amplicon Sequence Variants", color="trt", shape="trt")+ theme_bw() + theme(plot.title=element_text(color="black", size=16, face="bold", hjust=0.5), axis.line=element_line(color="black", size=1), axis.ticks=element_line(color="black"), axis.text=element_text(color="black", size=12, face="bold"), axis.title=element_text(color="black", size=16, face="bold"), legend.title=element_text(color="black", size=16, face="bold"), legend.text=element_text(color="black", size=15, face="bold"), panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + scale_colour_manual(name = "Frequency", labels = c("1X", "2X"), values=c("dark green","purple")) + scale_shape_manual(name = "Frequency",labels = c("1X", "2X"), values=c(15,16))
+
+#type data
+type_data <- rare_asv_long %>% 
+  group_by(type, depth) %>% 
+  summarise(median=median(value),
+            q1=quantile(value,0.25),
+            q3=quantile(value,0.75))
+
+
+#type graph
+type_asv <- ggplot(type_data, aes(x=depth, y=median, color=type, shape=type)) + geom_line(position=position_dodge(0.02)) + geom_point(size=3, position=position_dodge(0.02)) + labs(title="Sample Type",x="Sequencing Depth", y="Amplicon Sequence Variants", color="type", shape="type")+ theme_bw() + theme(plot.title=element_text(color="black", size=16, face="bold", hjust=0.5), axis.line=element_line(color="black", size=1), axis.ticks=element_line(color="black"), axis.text=element_text(color="black", size=12, face="bold"), axis.title=element_text(color="black", size=16, face="bold"), legend.title=element_text(color="black", size=16, face="bold"), legend.text=element_text(color="black", size=15, face="bold"), panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + scale_colour_manual(name="Type", values=c("black","deep pink")) + scale_shape_manual(name="Type", values=c(15,16))
+
+
+#Combine plots
+rarefactions <- ggarrange(trt_asv, breed_asv, type_asv, time_asv, 
+                          labels = c("A", "B", "C", "D"), 
+                          ncol=2, nrow=2)
+
+#generate figure
+ggexport(rarefactions, filename="figures/FigureS1freq.pdf", height=8.5, width=9)
+```
+
