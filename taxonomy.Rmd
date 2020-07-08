@@ -1,0 +1,556 @@
+---
+title: "Taxonomy within Gastrointestinal Site"
+author: Henry Paz and Vanessa De La Guardia
+output: html_notebook
+---
+
+Beta Diversity by Sample Type
+```{r, engine='bash'}
+#create directory beta_metrics
+mkdir beta_all
+
+#calculate beta metrics
+qiime diversity beta-phylogenetic \
+  --i-table table_deblur_rarefied.qza \
+  --i-phylogeny rooted_tree.qza \
+  --p-metric weighted_unifrac \
+  --o-distance-matrix beta_all/weighted_unifrac_distance_matrix_all.qza
+  
+qiime tools export \
+  --input-path beta_all/weighted_unifrac_distance_matrix_all.qza \
+  --output-path exported/weighted_unifrac_distance_matrix_all
+  
+#principal coordinate analysis
+qiime diversity pcoa \
+  --i-distance-matrix beta_all/weighted_unifrac_distance_matrix_all.qza \
+  --o-pcoa beta_all/weighted_unifrac_pcoa_results_all.qza
+  
+qiime tools export \
+  --input-path beta_all/weighted_unifrac_pcoa_results_all.qza \
+  --output-path exported/weighted_unifrac_pcoa_results_all
+
+#generate interactive ordination plot
+qiime emperor plot \
+--i-pcoa beta_all/weighted_unifrac_pcoa_results_all.qza \
+--m-metadata-file metadata/metadata_feedfreq.txt \
+--o-visualization visualizations/weighted_unifrac_emperor_all.qzv
+#qiime tools view visualizations/weighted_unifrac_emperor_all.qzv
+
+#Compare beta diversity for sample type
+qiime diversity beta-group-significance \
+  --i-distance-matrix beta_all/weighted_unifrac_distance_matrix_all.qza \
+  --m-metadata-file metadata/metadata_feedfreq.txt \
+  --m-metadata-column type \
+  --p-method permanova \
+  --p-permutations 999 \
+  --p-pairwise \
+  --o-visualization visualizations/weighted_unifrac_type_significance.qzv
+#qiime tools view visualizations/weighted_unifrac_type_significance.qzv  
+```
+
+
+PCoA Plot for Sample Type 
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(ggpubr)
+library(vegan)
+
+#Principal Component Analysis
+#create pcoa dataset
+pcoa <- read_tsv("exported/weighted_unifrac_pcoa_results_all/ordination.txt", col_names = c("SampleID", "PC1", "PC2"), skip=9) %>%
+  slice(1:180) # select rows 1 to 150
+
+#create IDs and type dataset
+ids_type <-  read_tsv("metadata/metadata_feedfreq.txt") %>% 
+  select("#SampleID", type) %>% 
+  rename(SampleID="#SampleID", Type=type)%>% 
+  slice(2:203) %>% 
+  na.omit() 
+
+#join pcoa and ids_type datasets
+pcoa_type <- left_join(pcoa, ids_type, by = "SampleID") %>% 
+  select(SampleID, Type, PC1, PC2) #reorder columns
+
+#weighted unifrac distance matrix data
+weighted_unifrac <- read_tsv("exported/weighted_unifrac_distance_matrix_all/distance-matrix.tsv")
+weighted_unifrac <- as.data.frame(weighted_unifrac)
+
+#Match sampleid order of matrix
+ids_type = ids_type[match(weighted_unifrac$X1, ids_type$SampleID), ]
+
+#generate matrix
+row.names(weighted_unifrac) <- weighted_unifrac$X1
+weighted_unifrac <- weighted_unifrac[, -1]
+weighted_unifrac <- as.dist(weighted_unifrac)
+
+#PERMANOVA
+adonis(weighted_unifrac ~ Type, permutations=999, data=ids_type)
+
+#PCoA plot Type
+type_pcoa_plot <- ggplot(pcoa_type, aes(x=PC1,y=PC2,shape=Type,color=Type)) + geom_point(size=3) + labs(x="PC1 (70.6%)", y="PC2 (6.78%)",shape="Type",color="Type") + theme_bw() + theme(axis.line=element_line(color="black", size=1), axis.ticks=element_line(color="black"), axis.text=element_text(color="black", size=14, face="bold"), axis.title=element_text(color="black", size=18, face="bold"), legend.title=element_text(color="black",size=18,face="bold"), legend.text=element_text(color="black",size=17,face="bold"), panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + stat_ellipse(aes(fill=Type), alpha=0.2, type="t", level=0.95, size=0.5, geom="polygon", show.legend=F) + scale_colour_manual(values=c("#D2691E","#006400")) + scale_fill_manual(values=c("#D2691E","#006400")) + scale_shape_manual(values=c(15,16)) + annotate(geom="text", x=-0.2, y=0.24, size=5.5, fontface="bold", color="#800000", label="PERMANOVA, P < 0.01")
+
+ggexport(type_pcoa_plot, filename="figures/Figure1.pdf", height=6, width=7)
+```
+
+
+Create Subsets by Type 
+```{r, engine='bash'}
+#create directory 
+mkdir type
+
+#Data subset Feces
+qiime feature-table filter-samples \
+  --i-table table_deblur_rarefied.qza \
+  --m-metadata-file metadata/metadata_feedfreq.txt \
+  --p-where "type='Feces'" \
+  --o-filtered-table type/table_rarefied_feces.qza
+  
+qiime tools export \
+  --input-path type/table_rarefied_feces.qza \
+  --output-path exported/table_rarefied_feces
+  
+biom convert -i  exported/table_rarefied_feces/feature-table.biom -o  exported/table_rarefied_feces/feature-table.txt --to-tsv  
+
+#Data subset Rumen
+qiime feature-table filter-samples \
+  --i-table table_deblur_rarefied.qza \
+  --m-metadata-file metadata/metadata_feedfreq.txt \
+  --p-where "type='Rumen'" \
+  --o-filtered-table type/table_rarefied_rumen.qza
+  
+qiime tools export \
+  --input-path type/table_rarefied_rumen.qza \
+  --output-path exported/table_rarefied_rumen
+  
+biom convert -i  exported/table_rarefied_rumen/feature-table.biom -o  exported/table_rarefied_rumen/feature-table.txt --to-tsv  
+```
+
+
+Generate taxonomy plots subsample.
+```{r, engine='bash'}
+#taxonomy barplot
+qiime taxa barplot \
+  --i-table type/table_rarefied_feces.qza\
+  --i-taxonomy taxonomy/gg_taxonomy.qza\
+  --m-metadata-file metadata/metadata_feedfreq.txt\
+  --o-visualization visualizations/taxa_feces_barplots.qzv
+#qiime tools view visualizations/taxa_feces_barplots.qzv
+
+qiime tools export \
+  --input-path visualizations/taxa_feces_barplots.qzv \
+  --output-path exported/taxa_feces_barplots
+
+
+qiime taxa barplot \
+  --i-table type/table_rarefied_rumen.qza\
+  --i-taxonomy taxonomy/gg_taxonomy.qza\
+  --m-metadata-file metadata/metadata_feedfreq.txt\
+  --o-visualization visualizations/taxa_rumen_barplots.qzv
+#qiime tools view visualizations/taxa_rumen_barplots.qzv
+
+qiime tools export \
+  --input-path visualizations/taxa_rumen_barplots.qzv \
+  --output-path exported/taxa_rumen_barplots
+```
+
+Summaries of taxonomic ranks
+```{r}
+library("tidyverse")
+
+#Feces
+#create Phyla dataset
+phyla_feces <-  read_csv("exported/taxa_feces_barplots/level-2.csv")
+
+phyla_feces <- phyla_feces %>% 
+  select("index":"k__Bacteria;p__Verrucomicrobia")
+
+#transform to proportions
+phyla_feces_df <- as.data.frame(phyla_feces)
+rownames(phyla_feces_df) <- phyla_feces_df[,1]
+phyla_feces_df <- phyla_feces_df[,-1]
+phyla_feces_prop <- phyla_feces_df/rowSums(phyla_feces_df)
+
+#summarize data
+summary_phyla_feces <- phyla_feces_prop %>% 
+  summarise_at(vars("k__Bacteria;__":"k__Bacteria;p__Verrucomicrobia"), mean) 
+
+#generate file
+write_tsv(summary_phyla_feces, path="type/summary_phyla_feces.txt")
+
+
+##################################################################
+
+#create Class dataset
+class_feces <-  read_csv("exported/taxa_feces_barplots/level-3.csv")
+
+class_feces <- class_feces %>% 
+  select("index":"k__Bacteria;p__Verrucomicrobia;c__Verrucomicrobiae")
+
+#transform to proportions
+class_feces_df <- as.data.frame(class_feces)
+rownames(class_feces_df) <- class_feces_df[,1]
+class_feces_df <- class_feces_df[,-1]
+class_feces_prop <- class_feces_df/rowSums(class_feces_df)
+
+#summarize data
+summary_class_feces <- class_feces_prop %>% 
+  summarise_at(vars("k__Bacteria;__;__":"k__Bacteria;p__Verrucomicrobia;c__Verrucomicrobiae"), mean) 
+
+#generate file
+write_tsv(summary_class_feces, path="type/summary_class_feces.txt")
+
+
+######################################################################
+
+#create order dataset
+order_feces <-  read_csv("exported/taxa_feces_barplots/level-4.csv")
+
+order_feces <- order_feces %>% 
+  select("index":"k__Bacteria;p__Verrucomicrobia;c__Verrucomicrobiae;o__Verrucomicrobiales")
+
+#transform to proportions
+order_feces_df <- as.data.frame(order_feces)
+rownames(order_feces_df) <- order_feces_df[,1]
+order_feces_df <- order_feces_df[,-1]
+order_feces_prop <- order_feces_df/rowSums(order_feces_df)
+
+#summarize data
+summary_order_feces <- order_feces_prop %>% 
+  summarise_at(vars("k__Bacteria;__;__;__":"k__Bacteria;p__Verrucomicrobia;c__Verrucomicrobiae;o__Verrucomicrobiales"), mean) 
+
+#generate file
+write_tsv(summary_order_feces, path="type/summary_order_feces.txt")
+
+
+######################################################################
+
+#create family dataset
+family_feces <-  read_csv("exported/taxa_feces_barplots/level-5.csv")
+
+family_feces <- family_feces %>% 
+  select("index":"k__Bacteria;p__Verrucomicrobia;c__Verrucomicrobiae;o__Verrucomicrobiales;f__Verrucomicrobiaceae")
+
+#transform to proportions
+family_feces_df <- as.data.frame(family_feces)
+rownames(family_feces_df) <- family_feces_df[,1]
+family_feces_df <- family_feces_df[,-1]
+family_feces_prop <- family_feces_df/rowSums(family_feces_df)
+
+#summarize data
+summary_family_feces <- family_feces_prop %>% 
+  summarise_at(vars("k__Bacteria;__;__;__;__":"k__Bacteria;p__Verrucomicrobia;c__Verrucomicrobiae;o__Verrucomicrobiales;f__Verrucomicrobiaceae"), mean) 
+
+#generate file
+write_tsv(summary_family_feces, path="type/summary_family_feces.txt")
+
+
+######################################################################
+
+#create genus dataset
+genus_feces <-  read_csv("exported/taxa_feces_barplots/level-6.csv")
+
+genus_feces <- genus_feces %>% 
+  select("index":"k__Bacteria;p__Verrucomicrobia;c__Verrucomicrobiae;o__Verrucomicrobiales;f__Verrucomicrobiaceae;g__Akkermansia")
+
+#transform to proportions
+genus_feces_df <- as.data.frame(genus_feces)
+rownames(genus_feces_df) <- genus_feces_df[,1]
+genus_feces_df <- genus_feces_df[,-1]
+genus_feces_prop <- genus_feces_df/rowSums(genus_feces_df)
+
+#summarize data
+summary_genus_feces <- genus_feces_prop %>% 
+  summarise_at(vars("k__Bacteria;__;__;__;__;__":"k__Bacteria;p__Verrucomicrobia;c__Verrucomicrobiae;o__Verrucomicrobiales;f__Verrucomicrobiaceae;g__Akkermansia"), mean) 
+
+#generate file
+write_tsv(summary_genus_feces, path="type/summary_genus_feces.txt")
+
+
+######################################################################
+
+#create specie dataset
+specie_feces <-  read_csv("exported/taxa_feces_barplots/level-7.csv")
+
+specie_feces <- specie_feces %>% 
+  select("index":"k__Bacteria;p__Verrucomicrobia;c__Verrucomicrobiae;o__Verrucomicrobiales;f__Verrucomicrobiaceae;g__Akkermansia;s__muciniphila")
+
+#transform to proportions
+specie_feces_df <- as.data.frame(specie_feces)
+rownames(specie_feces_df) <- specie_feces_df[,1]
+specie_feces_df <- specie_feces_df[,-1]
+specie_feces_prop <- specie_feces_df/rowSums(specie_feces_df)
+
+#summarize data
+summary_specie_feces <- specie_feces_prop %>% 
+  summarise_at(vars("k__Bacteria;__;__;__;__;__;__":"k__Bacteria;p__Verrucomicrobia;c__Verrucomicrobiae;o__Verrucomicrobiales;f__Verrucomicrobiaceae;g__Akkermansia;s__muciniphila"), mean) 
+
+#generate file
+write_tsv(summary_specie_feces, path="type/summary_specie_feces.txt")
+
+
+######################################################################
+######################################################################
+
+#Rumen
+#create Phyla dataset
+phyla_rumen <-  read_csv("exported/taxa_rumen_barplots/level-2.csv")
+
+phyla_rumen <- phyla_rumen %>% 
+  select("index":"k__Bacteria;p__WPS-2")
+
+#transform to proportions
+phyla_rumen_df <- as.data.frame(phyla_rumen)
+rownames(phyla_rumen_df) <- phyla_rumen_df[,1]
+phyla_rumen_df <- phyla_rumen_df[,-1]
+phyla_rumen_prop <- phyla_rumen_df/rowSums(phyla_rumen_df)
+
+#summarize data
+summary_phyla_rumen <- phyla_rumen_prop %>% 
+  summarise_at(vars("k__Bacteria;__":"k__Bacteria;p__WPS-2"), mean) 
+
+#generate file
+write_tsv(summary_phyla_rumen, path="type/summary_phyla_rumen.txt")
+
+
+######################################################################
+
+#create Class dataset
+class_rumen <-  read_csv("exported/taxa_rumen_barplots/level-3.csv")
+
+class_rumen <- class_rumen %>% 
+  select("index":"k__Bacteria;p__WPS-2;c__")
+
+#transform to proportions
+class_rumen_df <- as.data.frame(class_rumen)
+rownames(class_rumen_df) <- class_rumen_df[,1]
+class_rumen_df <- class_rumen_df[,-1]
+class_rumen_prop <- class_rumen_df/rowSums(class_rumen_df)
+
+#summarize data
+summary_class_rumen <- class_rumen_prop %>% 
+  summarise_at(vars("k__Bacteria;__;__":"k__Bacteria;p__WPS-2;c__"), mean) 
+
+#generate file
+write_tsv(summary_class_rumen, path="type/summary_class_rumen.txt")
+
+
+######################################################################
+
+#create order dataset
+order_rumen <-  read_csv("exported/taxa_rumen_barplots/level-4.csv")
+
+order_rumen <- order_rumen %>% 
+  select("index":"k__Bacteria;p__WPS-2;c__;o__")
+
+#transform to proportions
+order_rumen_df <- as.data.frame(order_rumen)
+rownames(order_rumen_df) <- order_rumen_df[,1]
+order_rumen_df <- order_rumen_df[,-1]
+order_rumen_prop <- order_rumen_df/rowSums(order_rumen_df)
+
+#summarize data
+summary_order_rumen <- order_rumen_prop %>% 
+  summarise_at(vars("k__Bacteria;__;__;__":"k__Bacteria;p__WPS-2;c__;o__"), mean) 
+
+#generate file
+write_tsv(summary_order_rumen, path="type/summary_order_rumen.txt")
+
+
+######################################################################
+
+#create family dataset
+family_rumen <-  read_csv("exported/taxa_rumen_barplots/level-5.csv")
+
+family_rumen <- family_rumen %>% 
+  select("index":"k__Bacteria;p__WPS-2;c__;o__;f__")
+
+#transform to proportions
+family_rumen_df <- as.data.frame(family_rumen)
+rownames(family_rumen_df) <- family_rumen_df[,1]
+family_rumen_df <- family_rumen_df[,-1]
+family_rumen_prop <- family_rumen_df/rowSums(family_rumen_df)
+
+#summarize data
+summary_family_rumen <- family_rumen_prop %>% 
+  summarise_at(vars("k__Bacteria;__;__;__;__":"k__Bacteria;p__WPS-2;c__;o__;f__"), mean) 
+
+#generate file
+write_tsv(summary_family_rumen, path="type/summary_family_rumen.txt")
+
+
+######################################################################
+
+#create genus dataset
+genus_rumen <-  read_csv("exported/taxa_rumen_barplots/level-6.csv")
+
+genus_rumen <- genus_rumen %>% 
+  select("index":"k__Bacteria;p__WPS-2;c__;o__;f__;g__")
+
+#transform to proportions
+genus_rumen_df <- as.data.frame(genus_rumen)
+rownames(genus_rumen_df) <- genus_rumen_df[,1]
+genus_rumen_df <- genus_rumen_df[,-1]
+genus_rumen_prop <- genus_rumen_df/rowSums(genus_rumen_df)
+
+#summarize data
+summary_genus_rumen <- genus_rumen_prop %>% 
+  summarise_at(vars("k__Bacteria;__;__;__;__;__":"k__Bacteria;p__WPS-2;c__;o__;f__;g__"), mean) 
+
+#generate file
+write_tsv(summary_genus_rumen, path="type/summary_genus_rumen.txt")
+
+
+######################################################################
+
+#create specie dataset
+specie_rumen <-  read_csv("exported/taxa_rumen_barplots/level-7.csv")
+
+specie_rumen <- specie_rumen %>% 
+  select("index":"k__Bacteria;p__WPS-2;c__;o__;f__;g__;s__")
+
+#transform to proportions
+specie_rumen_df <- as.data.frame(specie_rumen)
+rownames(specie_rumen_df) <- specie_rumen_df[,1]
+specie_rumen_df <- specie_rumen_df[,-1]
+specie_rumen_prop <- specie_rumen_df/rowSums(specie_rumen_df)
+
+#summarize data
+summary_specie_rumen <- specie_rumen_prop %>% 
+  summarise_at(vars("k__Bacteria;__;__;__;__;__;__":"k__Bacteria;p__WPS-2;c__;o__;f__;g__;s__"), mean) 
+
+#generate file
+write_tsv(summary_specie_rumen, path="type/summary_specie_rumen.txt")
+```
+
+
+Merge asv table and taxonomy data.
+```{r}
+library(tidyverse)
+
+#create taxonomy dataset
+taxonomy <- read_tsv("exported/gg_taxonomy/taxonomy.tsv", col_names = c("#OTU ID", "Taxonomy", "Confidence"), skip=1)
+
+#generate file
+write_tsv(taxonomy, "exported/gg_taxonomy/taxonomy_merge.tsv", col_names = T)
+```
+
+Add taxonomy and Convert Feature Table to .tsv
+```{r, engine='bash'}
+#add taxonomy data to matching samples
+biom add-metadata -i exported/table_deblur_rarefied/feature-table.biom -o table_deblur_rarefied_taxonomy.biom --observation-metadata-fp exported/gg_taxonomy/taxonomy_merge.tsv --sc-separated Taxonomy
+
+#convert from biom to tsv
+biom convert -i table_deblur_rarefied_taxonomy.biom -o table_deblur_rarefied_taxonomy.txt --to-tsv --header-key Taxonomy
+```
+
+
+Generate Heat Tree
+```{r, eval=F}
+library(tidyverse)
+library(ggplot2)
+library(ggpubr)
+library(metacoder)
+
+#create dataset
+asv_table <- read_tsv("table_deblur_rarefied_taxonomy.txt", skip=1) 
+
+#format asv_table
+colnames(asv_table)[1] <- "otu_id"
+asv_table$Taxonomy <- gsub("\\s", "", asv_table$Taxonomy)
+asv_table$Taxonomy <- gsub("\\[", "", asv_table$Taxonomy)
+asv_table$Taxonomy <- gsub("\\]", "", asv_table$Taxonomy)
+asv_table$Taxonomy <- gsub(";;;;;;", "", asv_table$Taxonomy)
+asv_table$Taxonomy <- gsub(";;;;;", "", asv_table$Taxonomy)
+asv_table$Taxonomy <- gsub(";;;;", "", asv_table$Taxonomy)
+asv_table$Taxonomy <- gsub(";;;", "", asv_table$Taxonomy)
+asv_table$Taxonomy <- gsub(";;", "", asv_table$Taxonomy)
+asv_table$Taxonomy <- gsub("Unassigned", "k__Bacteria", asv_table$Taxonomy)
+asv_table$Taxonomy <- gsub(";p__;c__;o__;f__", "", asv_table$Taxonomy)
+asv_table$Taxonomy <- gsub(";c__;o__;f__", "", asv_table$Taxonomy)
+asv_table$Taxonomy <- gsub(";g__;s__", "", asv_table$Taxonomy)
+asv_table$Taxonomy <- gsub(";f__$", "", asv_table$Taxonomy)
+asv_table$Taxonomy <- gsub(";s__$", "", asv_table$Taxonomy)
+asv_table$Taxonomy <- gsub(";o__$", "", asv_table$Taxonomy)
+
+#create IDs and breeds dataset
+filter_samples <- c("S113","S153","S159","S143","S134","S301","S302","S299", "S102","S175","S289","S290","S291","S292","S293","S294","S295", "S296", "S298", "S300")
+
+sample_metadata <-  read_tsv("metadata/metadata_feedfreq.txt") %>% 
+  select("#SampleID", type) %>% 
+  rename(SampleID="#SampleID", Type=type) %>% 
+  slice(2:203) %>% 
+  na.omit() %>% 
+  filter(!SampleID %in% filter_samples)
+# 2:203 <- 203 the last row of your sample_metadata
+
+#parse the asv table
+obj <- parse_tax_data(asv_table,
+                      class_cols = "Taxonomy", 
+                      class_sep = ";", 
+                      class_regex = "^(.+)__(.+)$", 
+                      class_key = c(tax_rank = "info", 
+                                    tax_name = "taxon_name"))
+
+#print(obj)
+#remove low abundance asv
+obj$data$tax_data <- zero_low_counts(obj, data="tax_data", min_count=5)
+
+#by setting low abundance counts to zero we might have created asv that no longer contain any observations. Check as follows.
+no_reads <- rowSums(obj$data$tax_data[, sample_metadata$SampleID]) == 0
+sum(no_reads)
+
+#filter zeroed asv
+obj <- filter_obs(obj, data="tax_data", 
+                  ! no_reads, drop_taxa=T)
+
+#print(obj)
+#get per-taxon information
+#sum abundance per-taxon and add the results to the taxmap object in a new table:
+obj$data$tax_abund <- calc_taxon_abund(obj, "tax_data", 
+                                       cols=sample_metadata$SampleID)
+
+#print(obj)
+#calculate the number of samples that have reads for each taxon:
+obj$data$tax_occ <- calc_n_samples(obj, "tax_abund", groups = sample_metadata$Type)
+
+#print(obj)
+#heat tree of taxonomic data Rumen
+set.seed(1)  
+rumen_tree <- heat_tree(obj, 
+                        node_label = taxon_names,
+                        node_size = n_obs,
+                        node_color = Rumen,
+                        title = "Rumen",
+                        title_size = 0.04,
+                        node_size_axis_label = "ASVs count",
+                        node_color_axis_label = "Samples",
+                        layout = "davidson-harel", 
+                        initial_layout = "reingold-tilford")
+
+
+#heat tree of taxonomic data Feces
+set.seed(1)
+feces_tree <- heat_tree(obj, 
+                        node_label = taxon_names,
+                        node_size = n_obs,
+                        node_color = Feces,
+                        title = "Feces",
+                        title_size = 0.04,
+                        node_size_axis_label = "ASVs count",
+                        node_color_range = c("#C0C0C0","#DAA520","#D2691E"),
+                        node_color_axis_label = "Samples",
+                        layout = "davidson-harel", 
+                        initial_layout = "reingold-tilford") 
+
+#combine plots
+type_tree <- ggarrange(rumen_tree, feces_tree,
+                       labels=c("A","B"), 
+                       nrow=1, ncol=2)
+
+#generate figure
+ggexport(type_tree, filename="figures/Figure2.pdf", height=6, width=14)
+```
+
+
+
