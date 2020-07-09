@@ -1,0 +1,266 @@
+---
+title: "Alpha metrics rumen"
+author: Henry Paz and Vanessa De La Guardia
+output: html_notebook
+---
+
+
+Alpha Metrics Rumen 
+```{r, engine='bash'}
+mkdir alpha_metrics_rumen
+
+#Compute alpha diversity metrics
+qiime diversity alpha \
+  --i-table type/table_rarefied_rumen.qza \
+  --p-metric goods_coverage \
+  --o-alpha-diversity alpha_metrics_rumen/goods_coverage_vector.qza 
+  
+qiime diversity alpha \
+  --i-table type/table_rarefied_rumen.qza \
+  --p-metric observed_otus \
+  --o-alpha-diversity alpha_metrics_rumen/observed_otus_vector.qza
+  
+qiime diversity alpha \
+  --i-table type/table_rarefied_rumen.qza \
+  --p-metric shannon \
+  --o-alpha-diversity alpha_metrics_rumen/shannon_vector.qza
+  
+#Compare alpha diversity metrics for rumen
+qiime diversity alpha-group-significance \
+  --i-alpha-diversity alpha_metrics_rumen/goods_coverage_vector.qza \
+  --m-metadata-file metadata/metadata_feedfreq.txt \
+  --o-visualization visualizations/goods_coverage_rumen_significance.qzv
+#qiime tools view visualizations/goods_coverage_rumen_significance.qzv
+
+qiime tools export \
+  --input-path visualizations/goods_coverage_rumen_significance.qzv \
+  --output-path exported/goods_coverage_rumen_significance
+
+qiime diversity alpha-group-significance \
+  --i-alpha-diversity alpha_metrics_rumen/observed_otus_vector.qza \
+  --m-metadata-file metadata/metadata_feedfreq.txt \
+  --o-visualization visualizations/observed_otus_rumen_significance.qzv
+#qiime tools view visualizations/observed_otus_rumen_significance.qzv
+
+qiime tools export \
+  --input-path visualizations/observed_otus_rumen_significance.qzv \
+  --output-path exported/observed_otus_rumen_significance
+
+qiime diversity alpha-group-significance \
+  --i-alpha-diversity alpha_metrics_rumen/shannon_vector.qza \
+  --m-metadata-file metadata/metadata_feedfreq.txt \
+  --o-visualization visualizations/shannon_rumen_significance.qzv
+#qiime tools view visualizations/shannon_rumen_significance.qzv
+
+qiime tools export \
+  --input-path visualizations/shannon_rumen_significance.qzv \
+  --output-path exported/shannon_rumen_significance
+```
+
+
+Alpha Diversity Plots Rumen
+```{r}
+library(tidyverse)
+library(ggplot2)
+library("ggpubr")
+
+
+#create goods_coverage dataset
+goods_coverage_data_rumen <-read_tsv("exported/goods_coverage_rumen_significance/metadata.tsv") %>% 
+  select(breed, trt, time, goods_coverage) %>% 
+  rename(Treatment=trt, Time=time, Breed=breed)%>% 
+  slice(2:94) %>% 
+  mutate(Breed=as.factor(Breed)) %>% 
+  mutate(Time=as.factor(Time)) %>%
+  mutate(Treatment=as.factor(Treatment)) %>% 
+  mutate(goods_coverage=as.numeric(goods_coverage))
+
+
+#summary statistic  
+options(pillar.sigfig=5) 
+goods_coverage_data_rumen %>%
+  group_by(Time) %>% 
+  summarise(mean=mean(goods_coverage),
+            stdev=sd(goods_coverage),
+            maxvalue=max(goods_coverage),
+            minvalue=min(goods_coverage))
+
+
+goods_coverage_data_rumen %>%
+  group_by(Breed) %>% 
+  summarise(mean=mean(goods_coverage),
+            stdev=sd(goods_coverage),
+            maxvalue=max(goods_coverage),
+            minvalue=min(goods_coverage))
+
+goods_coverage_data_rumen %>%
+  group_by(Treatment) %>% 
+  summarise(mean=mean(goods_coverage),
+            stdev=sd(goods_coverage),
+            maxvalue=max(goods_coverage),
+            minvalue=min(goods_coverage))
+
+#kruskal–wallis test time
+kruskal.test(goods_coverage~Time, data=goods_coverage_data_rumen)
+#Post-hoc test
+pairwise.wilcox.test(goods_coverage_data_rumen$goods_coverage, goods_coverage_data_rumen$Time, p.adjust.method="BH")
+
+
+#kruskal–wallis test breed
+kruskal.test(goods_coverage~Breed, data=goods_coverage_data_rumen)
+#Post-hoc test
+pairwise.wilcox.test(goods_coverage_data_rumen$goods_coverage, goods_coverage_data_rumen$Breed, p.adjust.method="BH")
+
+
+#kruskal–wallis test feeding frequency
+kruskal.test(goods_coverage~Treatment, data=goods_coverage_data_rumen)
+#Post-hoc test
+pairwise.wilcox.test(goods_coverage_data_rumen$goods_coverage, goods_coverage_data_rumen$Treatment, p.adjust.method="BH")
+
+
+######################################################################
+#create observed_otus dataset
+observed_otus_data_rumen <-read_tsv("exported/observed_otus_rumen_significance/metadata.tsv") %>% 
+  select(breed, trt, time, observed_otus) %>% 
+  rename(Treatment=trt, Time=time, Breed=breed)%>% 
+  slice(2:94) %>% 
+  mutate(Breed=as.factor(Breed)) %>% 
+  mutate(Time=as.factor(Time)) %>%
+  mutate(Treatment=as.factor(Treatment)) %>% 
+  mutate(observed_otus=as.numeric(observed_otus))
+
+#summary statistic time 
+options(pillar.sigfig=5) 
+observed_otus_data_rumen %>%
+  group_by(Time) %>% 
+  summarise(mean=mean(observed_otus),
+            stdev=sd(observed_otus),
+            maxvalue=max(observed_otus),
+            minvalue=min(observed_otus))
+
+#summary statistic breed 
+observed_otus_data_rumen %>%
+  group_by(Breed) %>% 
+  summarise(mean=mean(observed_otus),
+            stdev=sd(observed_otus),
+            maxvalue=max(observed_otus),
+            minvalue=min(observed_otus))
+
+
+#summary statistic feeding Frequency
+observed_otus_data_rumen %>%
+  group_by(Treatment) %>% 
+  summarise(mean=mean(observed_otus),
+            stdev=sd(observed_otus),
+            maxvalue=max(observed_otus),
+            minvalue=min(observed_otus))
+
+#kruskal–wallis test Time
+kruskal.test(observed_otus~Time, data=observed_otus_data_rumen)
+#Post-hoc test
+pairwise.wilcox.test(observed_otus_data_rumen$observed_otus, observed_otus_data_rumen$Time, p.adjust.method="BH")
+
+
+#kruskal–wallis test Breed
+kruskal.test(observed_otus~Breed, data=observed_otus_data_rumen)
+#Post-hoc test
+pairwise.wilcox.test(observed_otus_data_rumen$observed_otus, observed_otus_data_rumen$Breed, p.adjust.method="BH")
+
+
+#kruskal–wallis test Feeding Frequency 
+kruskal.test(observed_otus~Treatment, data=observed_otus_data_rumen)
+#Post-hoc test
+pairwise.wilcox.test(observed_otus_data_rumen$observed_otus, observed_otus_data_rumen$Treatment, p.adjust.method="BH")
+
+
+#time observed otus boxplot
+comparisons_time <- list( c("0", "6"), c("0", "12"), c("0", "18"), c("0", "24"))
+
+boxplot_time_otus_rumen <- ggplot(observed_otus_data_rumen, aes(x=Time, y=observed_otus, color=Time)) + geom_boxplot(lwd=1) + labs(title="", x="Time", y="Amplicon Sequence Variants") + theme_bw() + theme(plot.title=element_text(color="black", size=18, face="bold", hjust=0.5), axis.line=element_line(color="black", size=1), axis.ticks=element_line(color="black"), axis.text=element_text(color="black", size=14, face="bold"), axis.title=element_text(color="black", size=16, face="bold"), legend.position="none",  panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + scale_color_manual(name="Time (h)", values=c("Black","Red","Blue","Green","Purple"), limits=c("0","6","12","18","24")) + scale_x_discrete(limits=c("0","6","12","18","24")) + stat_compare_means(comparisons = comparisons_time, label="p.signif", label.y = c(860,900,940,970)) + annotate(geom="text", x="6", y=1015, size=3.5, fontface="bold", color="#800000", label="Kruskal-Wallis, P < 0.01")
+
+
+#feeding frequency observed otus boxplot
+boxplot_trt_otus_rumen <- ggplot(observed_otus_data_rumen, aes(x=Treatment, y=observed_otus, color=Treatment)) + geom_boxplot(lwd=1) + labs(title="", x="Frequency", y="Amplicon Sequence Variants") + theme_bw() + theme_bw() + theme(plot.title=element_text(color="black", size=18, face="bold", hjust=0), axis.line=element_line(color="black", size=1), axis.ticks=element_line(color="black"), axis.text=element_text(color="black", size=14, face="bold"), axis.title=element_text(color="black", size=16, face="bold"), legend.position="none", panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + scale_color_manual(name="Treatment", values=c("dark green","purple"),labels = c("1X", "2X")) + scale_shape_manual(name = "Treatment",labels = c("1X", "2X"), values=c(15,16)) + annotate(geom="text",x="1", y=905, size=3.5, fontface="bold", color="#800000", label="Kruskal-Wallis, P = 0.41") + scale_x_discrete(labels =c("1"="1X","2"="2X"))
+
+
+#breed observed otus boxplot
+boxplot_breed_otus_rumen <- ggplot(observed_otus_data_rumen, aes(x=Breed, y=observed_otus, color=Breed)) + geom_boxplot(lwd=1) + labs(title="", x="Breed", y="Amplicon Sequence Variants")+ theme_bw() + theme(plot.title=element_text(color="black", size=18, face="bold", hjust=0), axis.line=element_line(color="black", size=1), axis.ticks=element_line(color="black"), axis.text=element_text(color="black", size=14, face="bold"), axis.title=element_text(color="black", size=16, face="bold"), legend.position="none",  panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + scale_color_manual(name="Breed", values=c("red","blue")) + scale_shape_manual(name = "Breed", values=c(15,16)) + annotate(geom="text",x="Holstein", y=913, size=3.5, fontface="bold", color="#800000", label="Kruskal-Wallis, P = 0.20") 
+
+
+######################################################################
+#create shannon index dataset
+shannon_data_rumen <-  read_tsv("exported/shannon_rumen_significance/metadata.tsv") %>% 
+  select(breed, trt, time, shannon) %>% 
+  rename(Treatment=trt, Time=time, Breed=breed)%>% 
+  slice(2:94) %>% 
+  mutate(Breed=as.factor(Breed)) %>% 
+  mutate(Time=as.factor(Time)) %>%
+  mutate(Treatment=as.factor(Treatment)) %>% 
+  mutate(shannon=as.numeric(shannon))
+
+#summary statistic time 
+options(pillar.sigfig=5) 
+shannon_data_rumen %>%
+  group_by(Time) %>% 
+  summarise(mean=mean(shannon),
+            stdev=sd(shannon),
+            maxvalue=max(shannon),
+            minvalue=min(shannon))
+
+#summary statistic breed 
+shannon_data_rumen %>%
+  group_by(Breed) %>% 
+  summarise(mean=mean(shannon),
+            stdev=sd(shannon),
+            maxvalue=max(shannon),
+            minvalue=min(shannon))
+
+
+#summary statistic feeding Frequency
+shannon_data_rumen %>%
+  group_by(Treatment) %>% 
+  summarise(mean=mean(shannon),
+            stdev=sd(shannon),
+            maxvalue=max(shannon),
+            minvalue=min(shannon))
+
+#kruskal–wallis test Time
+kruskal.test(shannon~Time, data=shannon_data_rumen)
+#Post-hoc test
+pairwise.wilcox.test(shannon_data_rumen$shannon, shannon_data_rumen$Time, p.adjust.method="BH")
+
+
+#kruskal–wallis test Breed
+kruskal.test(shannon~Breed, data=shannon_data_rumen)
+#Post-hoc test
+pairwise.wilcox.test(shannon_data_rumen$shannon, shannon_data_rumen$Breed, p.adjust.method="BH")
+
+
+#kruskal–wallis test Feeding Frequency
+kruskal.test(shannon~Treatment, data=shannon_data_rumen)
+#Post-hoc test
+pairwise.wilcox.test(shannon_data_rumen$shannon, shannon_data_rumen$Treatment, p.adjust.method="BH")
+
+
+#time boxplot
+boxplot_time_shannon_rumen <- ggplot(shannon_data_rumen, aes(x=Time, y=shannon, color=Time)) + geom_boxplot(lwd=1) + labs(title="", x="Time", y="Shannon Index")+ theme_bw() + theme(plot.title=element_text(color="black", size=18, face="bold", hjust=0.5), axis.line=element_line(color="black", size=1), axis.ticks=element_line(color="black"), axis.text=element_text(color="black", size=14, face="bold"), axis.title=element_text(color="black", size=16, face="bold"), legend.position="none",  panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + scale_color_manual(name="Time (h)", values=c("Black","Red","Blue","Green","Purple"), limits=c("0","6","12","18","24")) + scale_x_discrete(limits=c("0","6","12","18","24")) + annotate(geom="text", x="6", y=8.5, size=3.5, fontface="bold", color="#800000", label="Kruskal-Wallis, P = 0.08") 
+boxplot_time_shannon_rumen
+
+#feeding frequency shannon boxplot
+boxplot_trt_shannon_rumen <- ggplot(shannon_data_rumen, aes(x=Treatment, y=shannon, color=Treatment)) + geom_boxplot(lwd=1) + labs(title="", x="Frequency", y="Shannon Index")+ theme_bw() + theme(plot.title=element_text(color="black", size=18, face="bold", hjust=0), axis.line=element_line(color="black", size=1), axis.ticks=element_line(color="black"), axis.text=element_text(color="black", size=14, face="bold"), axis.title=element_text(color="black", size=16, face="bold"), legend.position="none",  panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + scale_color_manual(name="Treatment", values=c("dark green","purple"),labels = c("1X", "2X")) + scale_shape_manual(name = "Treatment",labels = c("1X", "2X"), values=c(15,16)) + scale_x_discrete(labels =c("1"="1X","2"="2X")) + annotate(geom="text",x="1", y=8.6, size=3.5, fontface="bold", color="#800000", label="Kruskal-Wallis, P = 0.35")
+boxplot_trt_shannon_rumen 
+
+#breed shannon boxplot
+comparisons_breed <- list( c("Holstein", "Jersey"))
+
+boxplot_breed_shannon_rumen <- ggplot(shannon_data_rumen, aes(x=Breed, y=shannon, color=Breed)) + geom_boxplot(lwd=1) + labs(title="", x="Breed", y="Shannon Index")+ theme_bw() + theme(plot.title=element_text(color="black", size=18, face="bold", hjust=0), axis.line=element_line(color="black", size=1), axis.ticks=element_line(color="black"), axis.text=element_text(color="black", size=14, face="bold"), axis.title=element_text(color="black", size=16, face="bold"), legend.position="none",  panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + scale_color_manual(name="Breed", values=c("red","blue")) + scale_shape_manual(name = "Breed", values=c(15,16)) + annotate(geom="text",x="Holstein", y=8.75, size=3.5, fontface="bold", color="#800000", label="Kruskal-Wallis, P = 0.03") + stat_compare_means(comparisons = comparisons_breed, label="p.signif", label.y = c(8.58))
+boxplot_breed_shannon_rumen
+
+#combine boxplots
+boxplots_combine <- ggarrange(boxplot_trt_otus_rumen, boxplot_breed_otus_rumen, boxplot_time_otus_rumen, boxplot_trt_shannon_rumen, boxplot_breed_shannon_rumen, boxplot_time_shannon_rumen,
+                              labels = c("A","B","C","D","E","F"),
+                              ncol = 3, nrow = 2)
+
+#generate figure
+ggexport(boxplots_combine, filename="figures/FigureS2", height=9, width=12)
+```
