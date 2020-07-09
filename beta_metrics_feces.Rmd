@@ -1,0 +1,145 @@
+---
+title: "Beta diversity metrics"
+author: Henry Paz and Vanessa De La Guardia
+output: html_notebook
+---
+
+
+Beta diversity feces.
+```{r, engine='bash'}
+#create directory beta_metrics
+mkdir beta_metrics_feces
+
+#calculate beta metrics
+qiime diversity beta-phylogenetic \
+  --i-table type/table_rarefied_feces.qza \
+  --i-phylogeny rooted_tree.qza \
+  --p-metric weighted_unifrac \
+  --o-distance-matrix beta_metrics_feces/weighted_unifrac_distance_matrix.qza
+  
+qiime tools export \
+  --input-path beta_metrics_feces/weighted_unifrac_distance_matrix.qza \
+  --output-path exported/weighted_unifrac_distance_matrix_feces
+  
+#principal coordinate analysis
+qiime diversity pcoa \
+  --i-distance-matrix beta_metrics_feces/weighted_unifrac_distance_matrix.qza \
+  --o-pcoa beta_metrics_feces/weighted_unifrac_pcoa_results.qza
+  
+qiime tools export \
+  --input-path beta_metrics_feces/weighted_unifrac_pcoa_results.qza \
+  --output-path exported/weighted_unifrac_pcoa_results_feces
+
+#generate interactive ordination plot
+qiime emperor plot \
+--i-pcoa beta_metrics_feces/weighted_unifrac_pcoa_results.qza \
+--m-metadata-file metadata/metadata_feedfreq.txt \
+--o-visualization visualizations/weighted_unifrac_emperor_feces.qzv
+#qiime tools view visualizations/weighted_unifrac_emperor_feces.qzv
+
+#Compare beta diversity: breed, feeding frequency
+qiime diversity beta-group-significance \
+  --i-distance-matrix beta_metrics_feces/weighted_unifrac_distance_matrix.qza \
+  --m-metadata-file metadata/metadata_feedfreq.txt \
+  --m-metadata-column breed \
+  --p-method permanova \
+  --p-permutations 999 \
+  --p-pairwise \
+  --o-visualization visualizations/weighted_unifrac_breed_significance_feces.qzv 
+#qiime tools view visualizations/weighted_unifrac_breed_significance_feces.qzv 
+
+qiime diversity beta-group-significance \
+  --i-distance-matrix beta_metrics_feces/weighted_unifrac_distance_matrix.qza \
+  --m-metadata-file metadata/metadata_feedfreq.txt \
+  --m-metadata-column trt \
+  --p-method permanova \
+  --p-permutations 999 \
+  --p-pairwise \
+  --o-visualization visualizations/weighted_unifrac_trt_significance_feces.qzv 
+#qiime tools view visualizations/weighted_unifrac_trt_significance_feces.qzv 
+```
+
+
+PCoA plots by site
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(ggpubr)
+library(vegan)
+
+#Principal Component Analysis
+#create pcoa dataset
+pcoa_feces <- read_tsv("exported/weighted_unifrac_pcoa_results_feces/ordination.txt", col_names = c("SampleID", "PC1", "PC2"), skip=9)%>%
+  slice(1:87) # select rows with samples
+
+###################################################################
+#create IDs and breeds dataset
+ids_breed <-  read_tsv("metadata/metadata_feedfreq.txt") %>% 
+  select("#SampleID", breed) %>% 
+  rename(SampleID="#SampleID", Breed=breed)%>% 
+  slice(2:203) %>% 
+  na.omit() 
+
+#join pcoa and ids_breed datasets
+pcoa_breed <- left_join(pcoa_feces, ids_breed, by = "SampleID") %>% 
+  select(SampleID, Breed, PC1, PC2) #reorder columns
+
+#weighted unifrac distance matrix data
+weighted_unifrac <- read_tsv("exported/weighted_unifrac_distance_matrix_feces/distance-matrix.tsv")
+weighted_unifrac <- as.data.frame(weighted_unifrac)
+
+#Match sampleid order of matrix
+ids_breed = ids_breed[match(weighted_unifrac$X1, ids_breed$SampleID), ]
+
+#generate matrix
+row.names(weighted_unifrac) <- weighted_unifrac$X1
+weighted_unifrac <- weighted_unifrac[, -1]
+weighted_unifrac <- as.dist(weighted_unifrac)
+
+#PERMANOVA
+adonis(weighted_unifrac ~ Breed, permutations=999, data=ids_breed)
+
+#PCoA plot breed
+breed_pcoa_plot_feces <- ggplot(pcoa_breed, aes(x=PC1,y=PC2,shape=Breed,color=Breed)) + geom_point(size=3) + labs(x="PC1 (28.6%)", y="PC2 (13.3%)",shape="Breed",color="Breed")+ theme_bw() + theme(axis.line=element_line(color="black", size=1), axis.ticks=element_line(color="black"), axis.text=element_text(color="black", size=14, face="bold"), axis.title=element_text(color="black", size=18, face="bold"), legend.title=element_text(color="black",size=18,face="bold"), legend.text=element_text(color="black",size=17,face="bold"), panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + scale_shape_manual(values=c(15,16)) + scale_color_manual(name="Breed", values=c("red","blue")) + annotate(geom="text", x=0.12, y=0.2, size=5.5, fontface="bold", color="#800000", label="PERMANOVA, P < 0.01") + stat_ellipse(size=0.7)
+breed_pcoa_plot_feces
+
+##################################################################
+#create IDs and trt dataset
+ids_trt <-  read_tsv("metadata/metadata_feedfreq.txt") %>% 
+  select("#SampleID", trt) %>% 
+  rename(SampleID="#SampleID", Treatment=trt)%>% 
+  slice(2:203) %>% 
+  na.omit() 
+
+#join pcoa and ids_trt datasets
+pcoa_trt <- left_join(pcoa_feces, ids_trt, by = "SampleID") %>% 
+  select(SampleID, Treatment, PC1, PC2) #reorder columns
+
+#weighted unifrac distance matrix data
+weighted_unifrac <- read_tsv("exported/weighted_unifrac_distance_matrix_feces/distance-matrix.tsv")
+weighted_unifrac <- as.data.frame(weighted_unifrac)
+
+#Match sampleid order of matrix
+ids_trt = ids_trt[match(weighted_unifrac$X1, ids_trt$SampleID), ]
+
+#generate matrix
+row.names(weighted_unifrac) <- weighted_unifrac$X1
+weighted_unifrac <- weighted_unifrac[, -1]
+weighted_unifrac <- as.dist(weighted_unifrac)
+
+#PERMANOVA
+adonis(weighted_unifrac ~ Treatment, permutations=999, data=ids_trt)
+
+#PCoA plot feeding frequency
+trt_pcoa_plot_feces <- ggplot(pcoa_trt, aes(x=PC1,y=PC2, shape=Treatment,color=Treatment)) + geom_point(size=3) + labs(x="PC1 (28.6%)", y="PC2 (13.3%)",shape="Treatment",color="Treatment")+ theme_bw() + theme(axis.line=element_line(color="black", size=1), axis.ticks=element_line(color="black"), axis.text=element_text(color="black", size=14, face="bold"), axis.title=element_text(color="black", size=18, face="bold"), legend.title=element_text(color="black",size=18,face="bold"), legend.text=element_text(color="black",size=17,face="bold"), panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + scale_color_manual(name="Treatment", values=c("dark green","purple"), labels = c("1X", "2X")) + scale_shape_manual(name = "Treatment",labels = c("1X", "2X"), values=c(15,16)) + annotate(geom="text", x=0.1, y=0.18, size=5.5, fontface="bold", color="#800000", label="PERMANOVA, P = 0.08")
+trt_pcoa_plot_feces
+
+
+#combine plots
+beta_combine_plot <- ggarrange(trt_pcoa_plot_feces, breed_pcoa_plot_feces, 
+                               labels=c("C","D"), 
+                               nrow=1, ncol=2)
+
+#generate figure
+ggexport(beta_combine_plot, filename="figures/Figure3CD.pdf", height=5, width=10)
+```
