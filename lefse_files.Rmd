@@ -1,0 +1,319 @@
+---
+title: "LefSe input files"
+author: Henry Paz and Vanessa De La Guardia
+output: html_notebook
+---
+
+Create data subsets for multiple comparisons in LefSe
+```{r}
+library(tidyverse)
+
+
+#create directory
+dir.create("rumen_lefse")
+
+#create rumen dataset
+rumen_asv_table <-  read_tsv("exported/table_rarefied_rumen/feature-table.txt", skip=1) %>% 
+  rename(OTUID="#OTU ID")
+
+#Samples ID  
+rumen_sampleid <- colnames(rumen_asv_table) %>% 
+  as.data.frame() %>% 
+  rename(SampleID=".") %>% 
+  filter(SampleID!="OTUID")
+
+#create time dataset
+rumen_ids_time <-  read_tsv("metadata/metadata_feedfreq.txt") %>% 
+  select("#SampleID", type, time) %>% 
+  rename(SampleID="#SampleID",Type=type, Time=time)%>% 
+  slice(2:203) %>% 
+  filter(Type=="Rumen") %>% 
+  na.omit() 
+
+#join rumen_sampleid and rumen_ids_time dataset
+time_rumen <- left_join(rumen_sampleid, rumen_ids_time, by="SampleID") %>% 
+  select(Time, SampleID)
+
+#transpose
+time_rumen_t <- t(time_rumen)
+time_rumen_t <- as.data.frame(time_rumen_t, stringsAsFactors=F)
+
+#make second row header
+colnames(time_rumen_t) <- as.character(unlist(time_rumen_t[2,]))
+
+#rumen asv table
+rumen_asv_table_df <- as.data.frame(rumen_asv_table, stringsAsFactors=F)
+rownames(rumen_asv_table_df) <- rumen_asv_table_df[,1]
+rumen_asv_table_df <- rumen_asv_table_df[,-1]
+
+#combine datasets
+rumen_time_lefse <- rbind(time_rumen_t, rumen_asv_table_df)
+
+#Create data sets for pairwise comparisons across times
+#0 vs 6
+rumen_time0_6 <- time_rumen %>% 
+  filter(Time==0 | Time==6) %>% 
+  select(SampleID)
+
+rumen_t0_6_list <- rumen_time0_6$SampleID
+rumen_t0_6_lefse <- rumen_time_lefse[,rumen_t0_6_list]  
+
+#create file
+write.table(rumen_t0_6_lefse, file="rumen_lefse/rumen_t0_6_lefse.txt", sep="\t", col.names=F, row.names=T, quote=F)
+
+#0 vs 12
+rumen_time0_12 <- time_rumen %>% 
+  filter(Time==0 | Time==12) %>% 
+  select(SampleID)
+
+rumen_t0_12_list <- rumen_time0_12$SampleID
+rumen_t0_12_lefse <- rumen_time_lefse[,rumen_t0_12_list]  
+
+#create file
+write.table(rumen_t0_12_lefse, file="rumen_lefse/rumen_t0_12_lefse.txt", sep="\t", col.names=F, row.names=T, quote=F)
+
+#0 vs 18
+rumen_time0_18 <- time_rumen %>% 
+  filter(Time==0 | Time==18) %>% 
+  select(SampleID)
+
+rumen_t0_18_list <- rumen_time0_18$SampleID
+rumen_t0_18_lefse <- rumen_time_lefse[,rumen_t0_18_list] 
+
+#create file
+write.table(rumen_t0_18_lefse, file="rumen_lefse/rumen_t0_18_lefse.txt", sep="\t", col.names=F, row.names=T, quote=F)
+
+#0 vs 24
+rumen_time0_24 <- time_rumen %>% 
+  filter(Time==0 | Time==24) %>% 
+  select(SampleID)
+
+rumen_t0_24_list <- rumen_time0_24$SampleID
+rumen_t0_24_lefse <- rumen_time_lefse[,rumen_t0_24_list] 
+
+#create file
+write.table(rumen_t0_24_lefse, file="rumen_lefse/rumen_t0_24_lefse.txt", sep="\t", col.names=F, row.names=T, quote=F)
+
+#6 vs 12
+rumen_time6_12 <- time_rumen %>% 
+  filter(Time==6 | Time==12) %>% 
+  select(SampleID)
+
+rumen_t6_12_list <- rumen_time6_12$SampleID
+rumen_t6_12_lefse <- rumen_time_lefse[,rumen_t6_12_list] 
+
+#create file
+write.table(rumen_t6_12_lefse, file="rumen_lefse/rumen_t6_12_lefse.txt", sep="\t", col.names=F, row.names=T, quote=F)
+
+#6 vs 18
+rumen_time6_18 <- time_rumen %>% 
+  filter(Time==6 | Time==18) %>% 
+  select(SampleID)
+
+rumen_t6_18_list <- rumen_time6_18$SampleID
+rumen_t6_18_lefse <- rumen_time_lefse[,rumen_t6_18_list] 
+
+#create file
+write.table(rumen_t6_18_lefse, file="rumen_lefse/rumen_t6_18_lefse.txt", sep="\t", col.names=F, row.names=T, quote=F)
+
+#6 vs 24
+rumen_time6_24 <- time_rumen %>% 
+  filter(Time==6 | Time==24) %>% 
+  select(SampleID)
+
+rumen_t6_24_list <- rumen_time6_24$SampleID
+rumen_t6_24_lefse <- rumen_time_lefse[,rumen_t6_24_list] 
+
+#create file
+write.table(rumen_t6_24_lefse, file="rumen_lefse/rumen_t6_24_lefse.txt", sep="\t", col.names=F, row.names=T, quote=F)
+
+#12 vs 18
+rumen_time12_18 <- time_rumen %>% 
+  filter(Time==12 | Time==18) %>% 
+  select(SampleID)
+
+rumen_t12_18_list <- rumen_time12_18$SampleID
+rumen_t12_18_lefse <- rumen_time_lefse[,rumen_t12_18_list] 
+
+#create file
+write.table(rumen_t12_18_lefse, file="rumen_lefse/rumen_t12_18_lefse.txt", sep="\t", col.names=F, row.names=T, quote=F)
+
+#12 vs 24
+rumen_time12_24 <- time_rumen %>% 
+  filter(Time==12 | Time==24) %>% 
+  select(SampleID)
+
+rumen_t12_24_list <- rumen_time12_24$SampleID
+rumen_t12_24_lefse <- rumen_time_lefse[,rumen_t12_24_list] 
+
+#create file
+write.table(rumen_t12_24_lefse, file="rumen_lefse/rumen_t12_24_lefse.txt", sep="\t", col.names=F, row.names=T, quote=F)
+
+#18 vs 24
+rumen_time18_24 <- time_rumen %>% 
+  filter(Time==18 | Time==24) %>% 
+  select(SampleID)
+
+rumen_t18_24_list <- rumen_time18_24$SampleID
+rumen_t18_24_lefse <- rumen_time_lefse[,rumen_t18_24_list] 
+
+#create file
+write.table(rumen_t18_24_lefse, file="rumen_lefse/rumen_t18_24_lefse.txt", sep="\t", col.names=F, row.names=T, quote=F)
+
+
+
+##############################################################################################
+
+#create directory
+dir.create("feces_lefse")
+
+#create feces dataset
+feces_asv_table <-  read_tsv("exported/table_rarefied_feces/feature-table.txt", skip=1) %>% 
+  rename(OTUID="#OTU ID")
+
+#Samples ID  
+feces_sampleid <- colnames(feces_asv_table) %>% 
+  as.data.frame() %>% 
+  rename(SampleID=".") %>% 
+  filter(SampleID!="OTUID")
+
+#create time dataset
+feces_ids_time <-  read_tsv("metadata/metadata_feedfreq.txt") %>% 
+  select("#SampleID", type, time) %>% 
+  rename(SampleID="#SampleID",Type=type, Time=time)%>% 
+  slice(2:203) %>% 
+  filter(Type=="Feces") %>% 
+  na.omit() 
+
+#join feces_sampleid and feces_ids_time dataset
+time_feces <- left_join(feces_sampleid, feces_ids_time, by="SampleID") %>% 
+  select(Time, SampleID) 
+
+#transpose
+time_feces_t <- t(time_feces)
+time_feces_t <- as.data.frame(time_feces_t, stringsAsFactors=F)
+
+#make second row header
+colnames(time_feces_t) <- as.character(unlist(time_feces_t[2,])) 
+
+#feces asv table
+feces_asv_table_df <- as.data.frame(feces_asv_table, stringsAsFactors=F)
+rownames(feces_asv_table_df) <- feces_asv_table_df[,1]
+feces_asv_table_df <- feces_asv_table_df[,-1]
+
+#combine datasets
+feces_time_lefse <- rbind(time_feces_t, feces_asv_table_df)
+
+#Create data sets for pairwise comparisons across times
+#0 vs 6
+feces_time0_6 <- time_feces %>% 
+  filter(Time==0 | Time==6) %>% 
+  select(SampleID)
+
+feces_t0_6_list <- feces_time0_6$SampleID
+feces_t0_6_lefse <- feces_time_lefse[,feces_t0_6_list]  
+
+#create file
+write.table(feces_t0_6_lefse, file="feces_lefse/feces_t0_6_lefse.txt", sep="\t", col.names=F, row.names=T, quote=F)
+
+#0 vs 12
+feces_time0_12 <- time_feces %>% 
+  filter(Time==0 | Time==12) %>% 
+  select(SampleID)
+
+feces_t0_12_list <- feces_time0_12$SampleID
+feces_t0_12_lefse <- feces_time_lefse[,feces_t0_12_list]  
+
+#create file
+write.table(feces_t0_12_lefse, file="feces_lefse/feces_t0_12_lefse.txt", sep="\t", col.names=F, row.names=T, quote=F)
+
+#0 vs 18
+feces_time0_18 <- time_feces %>% 
+  filter(Time==0 | Time==18) %>% 
+  select(SampleID)
+
+feces_t0_18_list <- feces_time0_18$SampleID
+feces_t0_18_lefse <- feces_time_lefse[,feces_t0_18_list] 
+
+#create file
+write.table(feces_t0_18_lefse, file="feces_lefse/feces_t0_18_lefse.txt", sep="\t", col.names=F, row.names=T, quote=F)
+
+#0 vs 24
+feces_time0_24 <- time_feces %>% 
+  filter(Time==0 | Time==24) %>% 
+  select(SampleID)
+
+feces_t0_24_list <- feces_time0_24$SampleID
+feces_t0_24_lefse <- feces_time_lefse[,feces_t0_24_list] 
+
+#create file
+write.table(feces_t0_24_lefse, file="feces_lefse/feces_t0_24_lefse.txt", sep="\t", col.names=F, row.names=T, quote=F)
+
+#6 vs 12
+feces_time6_12 <- time_feces %>% 
+  filter(Time==6 | Time==12) %>% 
+  select(SampleID)
+
+feces_t6_12_list <- feces_time6_12$SampleID
+feces_t6_12_lefse <- feces_time_lefse[,feces_t6_12_list] 
+
+#create file
+write.table(feces_t6_12_lefse, file="feces_lefse/feces_t6_12_lefse.txt", sep="\t", col.names=F, row.names=T, quote=F)
+
+#6 vs 18
+feces_time6_18 <- time_feces %>% 
+  filter(Time==6 | Time==18) %>% 
+  select(SampleID)
+
+feces_t6_18_list <- feces_time6_18$SampleID
+feces_t6_18_lefse <- feces_time_lefse[,feces_t6_18_list] 
+
+#create file
+write.table(feces_t6_18_lefse, file="feces_lefse/feces_t6_18_lefse.txt", sep="\t", col.names=F, row.names=T, quote=F)
+
+#6 vs 24
+feces_time6_24 <- time_feces %>% 
+  filter(Time==6 | Time==24) %>% 
+  select(SampleID)
+
+feces_t6_24_list <- feces_time6_24$SampleID
+feces_t6_24_lefse <- feces_time_lefse[,feces_t6_24_list] 
+
+#create file
+write.table(feces_t6_24_lefse, file="feces_lefse/feces_t6_24_lefse.txt", sep="\t", col.names=F, row.names=T, quote=F)
+
+#12 vs 18
+feces_time12_18 <- time_feces %>% 
+  filter(Time==12 | Time==18) %>% 
+  select(SampleID)
+
+feces_t12_18_list <- feces_time12_18$SampleID
+feces_t12_18_lefse <- feces_time_lefse[,feces_t12_18_list] 
+
+#create file
+write.table(feces_t12_18_lefse, file="feces_lefse/feces_t12_18_lefse.txt", sep="\t", col.names=F, row.names=T, quote=F)
+
+#12 vs 24
+feces_time12_24 <- time_feces %>% 
+  filter(Time==12 | Time==24) %>% 
+  select(SampleID)
+
+feces_t12_24_list <- feces_time12_24$SampleID
+feces_t12_24_lefse <- feces_time_lefse[,feces_t12_24_list] 
+
+#create file
+write.table(feces_t12_24_lefse, file="feces_lefse/feces_t12_24_lefse.txt", sep="\t", col.names=F, row.names=T, quote=F)
+
+#18 vs 24
+feces_time18_24 <- time_feces %>% 
+  filter(Time==18 | Time==24) %>% 
+  select(SampleID)
+
+feces_t18_24_list <- feces_time18_24$SampleID
+feces_t18_24_lefse <- feces_time_lefse[,feces_t18_24_list] 
+
+#create file
+write.table(feces_t18_24_lefse, file="feces_lefse/feces_t18_24_lefse.txt", sep="\t", col.names=F, row.names=T, quote=F)
+```
+
+
