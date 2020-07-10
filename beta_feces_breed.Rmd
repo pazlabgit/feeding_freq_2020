@@ -1,0 +1,130 @@
+---
+title: "Beta diversity metrics feces: Holstein and Jersey"
+author: Henry Paz and Vanessa De La Guardia
+output: html_notebook
+---
+
+
+Subset data feces - Holsteins
+```{r, engine='bash'}
+#Data subset Feces-Holsteins
+qiime feature-table filter-samples \
+--i-table type/table_rarefied_feces.qza \
+--m-metadata-file metadata/metadata_feedfreq.txt \
+--p-where "breed='Holstein'" \
+--o-filtered-table breed/table_rarefied_feces_holstein.qza
+
+qiime tools export \
+--input-path breed/table_rarefied_feces_holstein.qza \
+--output-path exported/table_rarefied_feces_holstein
+
+biom convert -i  exported/table_rarefied_feces_holstein/feature-table.biom -o  exported/table_rarefied_feces_holstein/feature-table.txt --to-tsv
+```
+
+
+Beta diversity feces-Holstein
+```{r, engine='bash'}
+#create directory beta_metrics
+mkdir breed/beta_metrics_feces_holstein
+
+#calculate beta metrics
+qiime diversity beta-phylogenetic \
+--i-table breed/table_rarefied_feces_holstein.qza \
+--i-phylogeny rooted_tree.qza \
+--p-metric weighted_unifrac \
+--o-distance-matrix breed/beta_metrics_feces_holstein/weighted_unifrac_distance_matrix.qza
+
+qiime tools export \
+--input-path breed/beta_metrics_feces_holstein/weighted_unifrac_distance_matrix.qza \
+--output-path exported/weighted_unifrac_distance_matrix_feces_holstein
+
+#principal coordinate analysis
+qiime diversity pcoa \
+--i-distance-matrix breed/beta_metrics_feces_holstein/weighted_unifrac_distance_matrix.qza \
+--o-pcoa breed/beta_metrics_feces_holstein/weighted_unifrac_pcoa_results.qza
+
+qiime tools export \
+--input-path breed/beta_metrics_feces_holstein/weighted_unifrac_pcoa_results.qza \
+--output-path exported/weighted_unifrac_pcoa_results_feces_holstein
+
+#generate interactive ordination plot
+qiime emperor plot \
+--i-pcoa breed/beta_metrics_feces_holstein/weighted_unifrac_pcoa_results.qza \
+--m-metadata-file metadata/metadata_feedfreq.txt \
+--o-visualization visualizations/weighted_unifrac_emperor_feces_holstein.qzv
+#qiime tools view visualizations/weighted_unifrac_emperor_feces_holstein.qzv
+
+#Compare beta diversity
+qiime diversity beta-group-significance \
+--i-distance-matrix breed/beta_metrics_feces_holstein/weighted_unifrac_distance_matrix.qza \
+--m-metadata-file metadata/metadata_feedfreq.txt \
+--m-metadata-column time \
+--p-method permanova \
+--p-permutations 999 \
+--p-pairwise \
+--o-visualization visualizations/weighted_unifrac_time_significance_feces_holstein.qzv 
+#qiime tools view visualizations/weighted_unifrac_time_significance_feces_holstein.qzv 
+```
+
+
+
+Subset data feces - Jersey
+```{r, engine='bash'}
+#Data subset Feces-Jersey
+qiime feature-table filter-samples \
+--i-table type/table_rarefied_feces.qza \
+--m-metadata-file metadata/metadata_feedfreq.txt \
+--p-where "breed='Jersey'" \
+--o-filtered-table breed/table_rarefied_feces_jersey.qza
+
+qiime tools export \
+--input-path breed/table_rarefied_feces_jersey.qza \
+--output-path exported/table_rarefied_feces_jersey
+
+biom convert -i  exported/table_rarefied_feces_jersey/feature-table.biom -o  exported/table_rarefied_feces_jersey/feature-table.txt --to-tsv  
+```
+
+
+Beta diversity feces-Jersey
+```{r, engine='bash'}
+#create directory beta_metrics
+mkdir breed/beta_metrics_feces_jersey
+
+#calculate beta metrics
+qiime diversity beta-phylogenetic \
+--i-table breed/table_rarefied_feces_jersey.qza \
+--i-phylogeny rooted_tree.qza \
+--p-metric weighted_unifrac \
+--o-distance-matrix breed/beta_metrics_feces_jersey/weighted_unifrac_distance_matrix.qza
+
+qiime tools export \
+--input-path breed/beta_metrics_feces_jersey/weighted_unifrac_distance_matrix.qza \
+--output-path exported/weighted_unifrac_distance_matrix_feces_jersey
+
+#principal coordinate analysis
+qiime diversity pcoa \
+--i-distance-matrix breed/beta_metrics_feces_jersey/weighted_unifrac_distance_matrix.qza \
+--o-pcoa breed/beta_metrics_feces_jersey/weighted_unifrac_pcoa_results.qza
+
+qiime tools export \
+--input-path breed/beta_metrics_feces_jersey/weighted_unifrac_pcoa_results.qza \
+--output-path exported/weighted_unifrac_pcoa_results_feces_jersey
+
+#generate interactive ordination plot
+qiime emperor plot \
+--i-pcoa breed/beta_metrics_feces_jersey/weighted_unifrac_pcoa_results.qza \
+--m-metadata-file metadata/metadata_feedfreq.txt \
+--o-visualization visualizations/weighted_unifrac_emperor_feces_jersey.qzv
+#qiime tools view visualizations/weighted_unifrac_emperor_feces_jersey.qzv
+
+#Compare beta diversity
+qiime diversity beta-group-significance \
+--i-distance-matrix breed/beta_metrics_feces_jersey/weighted_unifrac_distance_matrix.qza \
+--m-metadata-file metadata/metadata_feedfreq.txt \
+--m-metadata-column time \
+--p-method permanova \
+--p-permutations 999 \
+--p-pairwise \
+--o-visualization visualizations/weighted_unifrac_time_significance_feces_jersey.qzv 
+#qiime tools view visualizations/weighted_unifrac_time_significance_feces_jersey.qzv 
+```
