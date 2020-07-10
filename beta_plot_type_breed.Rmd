@@ -1,0 +1,165 @@
+---
+title: "Beta diversity by type and breed "
+author: Henry Paz and Vanessa De La Guardia
+output: html_notebook
+---
+
+
+Principal Coordinate Analysis: beta diversity by type and breed 
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(ggpubr)
+library(vegan)
+
+#Principal Component Analysis
+#create pcoa dataset
+pcoa_feces <- read_tsv("exported/weighted_unifrac_pcoa_results_feces_jersey/ordination.txt", col_names = c("SampleID", "PC1", "PC2"), skip=9)%>%
+  slice(1:45)
+
+#create IDs and time dataset
+ids_time <-  read_tsv("metadata/metadata_feedfreq.txt") %>% 
+  select("#SampleID", time) %>% 
+  rename(SampleID="#SampleID", Time=time)%>% 
+  slice(2:203) %>% 
+  na.omit() 
+
+#join pcoa and ids_breed datasets
+pcoa_time <- left_join(pcoa_feces, ids_time, by = "SampleID") %>% 
+  select(SampleID, Time, PC1, PC2) 
+
+#weighted unifrac distance matrix data
+weighted_unifrac <- read_tsv("exported/weighted_unifrac_distance_matrix_feces_jersey/distance-matrix.tsv")
+weighted_unifrac <- as.data.frame(weighted_unifrac)
+
+#Match sampleid order of matrix
+ids_time = ids_time[match(weighted_unifrac$X1, ids_time$SampleID), ]
+
+#generate matrix
+row.names(weighted_unifrac) <- weighted_unifrac$X1
+weighted_unifrac <- weighted_unifrac[, -1]
+weighted_unifrac <- as.dist(weighted_unifrac)
+
+#PERMANOVA
+adonis(weighted_unifrac ~ Time, permutations=999, data=ids_time)
+
+#PCoA plot time
+time_pcoa_plot_feces_jer <- ggplot(pcoa_time, aes(x=PC1,y=PC2, shape=Time,color=Time)) + geom_point(size=3) + labs(x="PC1 (38.0%)", y="PC2 (14.0%)",shape="Time",color="Time")+theme_bw() + theme(axis.line=element_line(color="black", size=1), axis.ticks=element_line(color="black"), axis.text=element_text(color="black", size=14, face="bold"), axis.title=element_text(color="black", size=18, face="bold"), legend.title=element_text(color="black",size=18,face="bold"), legend.text=element_text(color="black",size=17,face="bold"),  panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + scale_color_manual(name="Time (h)", values=c("Black","Red","Blue","Green","Purple"), limits=c("0","6","12","18","24")) + scale_shape_manual(name="Time (h)", values=c(20,18,15,8,17), limits=c("0","6","12","18","24")) + annotate(geom="text", x=0.15, y=0.2, size=5.5, fontface="bold", color="#800000", label="PERMANOVA, P = 0.11")
+
+#########################################
+#create pcoa dataset
+pcoa_feces <- read_tsv("exported/weighted_unifrac_pcoa_results_feces_holstein/ordination.txt", col_names = c("SampleID", "PC1", "PC2"), skip=9)%>%
+  slice(1:42) 
+
+#create IDs and time dataset
+ids_time <-  read_tsv("metadata/metadata_feedfreq.txt") %>% 
+  select("#SampleID", time) %>% 
+  rename(SampleID="#SampleID", Time=time)%>% 
+  slice(2:203) %>% 
+  na.omit() 
+
+#join pcoa and ids_breed datasets
+pcoa_time <- left_join(pcoa_feces, ids_time, by = "SampleID") %>% 
+  select(SampleID, Time, PC1, PC2) 
+
+#weighted unifrac distance matrix data
+weighted_unifrac <- read_tsv("exported/weighted_unifrac_distance_matrix_feces_holstein/distance-matrix.tsv")
+weighted_unifrac <- as.data.frame(weighted_unifrac)
+
+#Match sampleid order of matrix
+ids_time = ids_time[match(weighted_unifrac$X1, ids_time$SampleID), ]
+
+#generate matrix
+row.names(weighted_unifrac) <- weighted_unifrac$X1
+weighted_unifrac <- weighted_unifrac[, -1]
+weighted_unifrac <- as.dist(weighted_unifrac)
+
+#PERMANOVA
+adonis(weighted_unifrac ~ Time, permutations=999, data=ids_time)
+
+
+#PCoA plot time
+time_pcoa_plot_feces_hol <- ggplot(pcoa_time, aes(x=PC1,y=PC2, shape=Time,color=Time)) + geom_point(size=3) + labs(x="PC1 (28.0%)", y="PC2 (13.3%)",shape="Time",color="Time")+theme_bw() + theme(axis.line=element_line(color="black", size=1), axis.ticks=element_line(color="black"), axis.text=element_text(color="black", size=14, face="bold"), axis.title=element_text(color="black", size=18, face="bold"), legend.title=element_text(color="black",size=18,face="bold"), legend.text=element_text(color="black",size=17,face="bold"), panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + scale_color_manual(name="Time (h)", values=c("Black","Red","Blue","Green","Purple"), limits=c("0","6","12","18","24")) + scale_shape_manual(name="Time (h)", values=c(20,18,15,8,17), limits=c("0","6","12","18","24")) + annotate(geom="text", x=-0.05, y=0.1, size=5.5, fontface="bold", color="#800000", label="PERMANOVA, P = 0.07")
+
+beta_combine_plot_fec <- ggarrange(time_pcoa_plot_feces_hol, time_pcoa_plot_feces_jer,
+                                   nrow=1, ncol=2)
+
+
+ggexport(beta_combine_plot_fec, filename="figures/Figure4CD.pdf", height= 5, width=9.5)
+
+
+#############################################
+#create pcoa dataset
+pcoa_rumen <- read_tsv("exported/weighted_unifrac_pcoa_results_rumen_jersey/ordination.txt", col_names = c("SampleID", "PC1", "PC2"), skip=9)%>%
+  slice(1:48) 
+
+#create IDs and time dataset
+ids_time <-  read_tsv("metadata/metadata_feedfreq.txt") %>% 
+  select("#SampleID", time) %>% 
+  rename(SampleID="#SampleID", Time=time)%>% 
+  slice(2:203) %>% 
+  na.omit() 
+
+#join pcoa and ids_breed datasets
+pcoa_time <- left_join(pcoa_rumen, ids_time, by = "SampleID") %>% 
+  select(SampleID, Time, PC1, PC2)
+
+#weighted unifrac distance matrix data
+weighted_unifrac <- read_tsv("exported/weighted_unifrac_distance_matrix_rumen_jersey/distance-matrix.tsv")
+weighted_unifrac <- as.data.frame(weighted_unifrac)
+
+#Match sampleid order of matrix
+ids_time = ids_time[match(weighted_unifrac$X1, ids_time$SampleID), ]
+
+#generate matrix
+row.names(weighted_unifrac) <- weighted_unifrac$X1
+weighted_unifrac <- weighted_unifrac[, -1]
+weighted_unifrac <- as.dist(weighted_unifrac)
+
+#PERMANOVA
+adonis(weighted_unifrac ~ Time, permutations=999, data=ids_time)
+
+#PCoA plot time
+time_pcoa_plot_rumen_jer <- ggplot(pcoa_time, aes(x=PC1,y=PC2, shape=Time,color=Time)) + geom_point(size=3) + labs(x="PC1 (36.5%)", y="PC2 (14.2%)",shape="Time",color="Time")+theme_bw() + theme(axis.line=element_line(color="black", size=1), axis.ticks=element_line(color="black"), axis.text=element_text(color="black", size=14, face="bold"), axis.title=element_text(color="black", size=18, face="bold"), legend.title=element_text(color="black",size=18,face="bold"), legend.text=element_text(color="black",size=17,face="bold"),  panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + scale_color_manual(name="Time (h)", values=c("Black","Red","Blue","Green","Purple"), limits=c("0","6","12","18","24")) + scale_shape_manual(name="Time (h)", values=c(20,18,15,8,17), limits=c("0","6","12","18","24")) + annotate(geom="text", x=0.07, y=0.15, size=5.5, fontface="bold", color="#800000", label="PERMANOVA, P = 0.10")
+
+
+###########################################
+pcoa_rumen <- read_tsv("exported/weighted_unifrac_pcoa_results_rumen_holstein/ordination.txt", col_names = c("SampleID", "PC1", "PC2"), skip=9)%>%
+  slice(1:45)
+
+#create IDs and time dataset
+ids_time <-  read_tsv("metadata/metadata_feedfreq.txt") %>% 
+  select("#SampleID", time) %>% 
+  rename(SampleID="#SampleID", Time=time)%>% 
+  slice(2:203) %>% 
+  na.omit() 
+
+#join pcoa and ids_breed datasets
+pcoa_time <- left_join(pcoa_rumen, ids_time, by = "SampleID") %>% 
+  select(SampleID, Time, PC1, PC2) 
+
+#weighted unifrac distance matrix data
+weighted_unifrac <- read_tsv("exported/weighted_unifrac_distance_matrix_rumen_holstein/distance-matrix.tsv")
+weighted_unifrac <- as.data.frame(weighted_unifrac)
+
+#Match sampleid order of matrix
+ids_time = ids_time[match(weighted_unifrac$X1, ids_time$SampleID), ]
+
+#generate matrix
+row.names(weighted_unifrac) <- weighted_unifrac$X1
+weighted_unifrac <- weighted_unifrac[, -1]
+weighted_unifrac <- as.dist(weighted_unifrac)
+
+#PERMANOVA
+adonis(weighted_unifrac ~ Time, permutations=999, data=ids_time)
+
+#PCoA plot time
+time_pcoa_plot_rumen_hol <- ggplot(pcoa_time, aes(x=PC1,y=PC2, shape=Time,color=Time)) + geom_point(size=3) + labs(x="PC1 (44.8%)", y="PC2 (13.3%)",shape="Time",color="Time")+theme_bw() + theme(axis.line=element_line(color="black", size=1), axis.ticks=element_line(color="black"), axis.text=element_text(color="black", size=14, face="bold"), axis.title=element_text(color="black", size=18, face="bold"), legend.title=element_text(color="black",size=18,face="bold"), legend.text=element_text(color="black",size=17,face="bold"),  panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) + scale_color_manual(name="Time (h)", values=c("Black","Red","Blue","Green","Purple"), limits=c("0","6","12","18","24")) + scale_shape_manual(name="Time (h)", values=c(20,18,15,8,17), limits=c("0","6","12","18","24")) + annotate(geom="text", x=-0.1, y=0.25, size=5.5, fontface="bold", color="#800000", label="PERMANOVA, P = 0.01") + stat_ellipse(size=0.7)
+
+
+beta_combine_plot_rum <- ggarrange(time_pcoa_plot_rumen_hol, time_pcoa_plot_rumen_jer,
+                               nrow=1, ncol=2)
+
+
+ggexport(beta_combine_plot_rum, filename="figures/Figure4AB.pdf", height=5, width=9.5)
+```
