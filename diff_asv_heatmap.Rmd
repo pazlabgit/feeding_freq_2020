@@ -1,0 +1,436 @@
+---
+title: "Differentialy abundant ASV's subset and heatmap"
+author: Henry Paz and Vanessa De La Guardia
+output: html_notebook
+---
+
+
+```{r}
+#load libraries
+library(tidyverse)
+library(data.table)
+library(Heatplus)
+library(vegan) #for vegdist
+library(gplots) #for heatmap.2
+
+
+#create directory
+dir.create("time_diff_rumen")
+
+
+#Time diff ASV's list 
+#create data set time 0 vs 6
+rumen_t0_6_lefse <- read_tsv("lefse_results/t0_6_rumen.txt", col_names =F) %>% 
+  filter(complete.cases(.)) 
+
+#adjust for multiple comparisons  
+rumen_t0_6_lefse$BH  <- p.adjust(rumen_t0_6_lefse$X5, method = "BH")
+
+#create differential features file
+rumen_t0_6_diff <- rumen_t0_6_lefse %>% 
+  filter(BH <= 0.05) %>% 
+  select(X1)
+
+write_tsv(rumen_t0_6_diff, col_names=F, path="time_diff_rumen/t0_6_diff_rumen.txt")
+
+
+#create data set time 6 vs 18
+rumen_t6_18_lefse <- read_tsv("lefse_results/t6_18_rumen.txt", col_names =F) %>% 
+  filter(complete.cases(.)) 
+
+#adjust for multiple comparisons  
+rumen_t6_18_lefse$BH  <- p.adjust(rumen_t6_18_lefse$X5, method = "BH")
+
+#create differential features file
+rumen_t6_18_diff <- rumen_t6_18_lefse %>% 
+  filter(BH <= 0.05) %>% 
+  select(X1)
+
+write_tsv(rumen_t6_18_diff, col_names=F, path="time_diff_rumen/t6_18_diff_rumen.txt")
+
+
+#create data set time 6 vs 24
+rumen_t6_24_lefse <- read_tsv("lefse_results/t6_24_rumen.txt", col_names =F) %>% 
+  filter(complete.cases(.)) 
+
+#adjust for multiple comparisons  
+rumen_t6_24_lefse$BH  <- p.adjust(rumen_t6_24_lefse$X5, method = "BH")
+
+#create differential features file
+rumen_t6_24_diff <- rumen_t6_24_lefse %>% 
+  filter(BH <= 0.05) %>% 
+  select(X1)
+
+write_tsv(rumen_t6_24_diff, col_names=F, path="time_diff_rumen/t6_24_diff_rumen.txt")
+
+
+#########################################################################################
+
+#create directory
+dir.create("time_diff_feces")
+
+#create data set time 0 vs 12
+feces_t0_12_lefse <- read_tsv("lefse_results/t0_12_feces.txt", col_names =F) %>% 
+  filter(complete.cases(.)) 
+
+#adjust for multiple comparisons  
+feces_t0_12_lefse$BH  <- p.adjust(feces_t0_12_lefse$X5, method = "BH")
+
+#create differential features file
+feces_t0_12_diff <- feces_t0_12_lefse %>% 
+  filter(BH <= 0.05) %>% 
+  select(X1)
+
+write_tsv(feces_t0_12_diff, col_names=F, path="time_diff_feces/t0_12_diff_feces.txt")
+
+
+#create data set time 0 vs 18
+feces_t0_18_lefse <- read_tsv("lefse_results/t0_18_feces.txt", col_names =F) %>% 
+  filter(complete.cases(.)) 
+
+#adjust for multiple comparisons  
+feces_t0_18_lefse$BH  <- p.adjust(feces_t0_18_lefse$X5, method = "BH")
+
+#create differential features file
+feces_t0_18_diff <- feces_t0_18_lefse %>% 
+  filter(BH <= 0.05) %>% 
+  select(X1)
+
+write_tsv(feces_t0_18_diff, col_names=F, path="time_diff_feces/t0_18_diff_feces.txt")
+
+
+#create data set time 6 vs 12
+feces_t6_12_lefse <- read_tsv("lefse_results/t6_12_feces.txt", col_names =F) %>% 
+  filter(complete.cases(.)) 
+
+#adjust for multiple comparisons  
+feces_t6_12_lefse$BH  <- p.adjust(feces_t6_12_lefse$X5, method = "BH")
+
+#create differential features file
+feces_t6_12_diff <- feces_t6_12_lefse %>% 
+  filter(BH <= 0.05) %>% 
+  select(X1)
+
+write_tsv(feces_t6_12_diff, col_names=F, path="time_diff_feces/t6_12_diff_feces.txt")
+
+
+#create data set time 6 vs 18
+feces_t6_18_lefse <- read_tsv("lefse_results/t6_18_feces.txt", col_names =F) %>% 
+  filter(complete.cases(.)) 
+
+#adjust for multiple comparisons  
+feces_t6_18_lefse$BH  <- p.adjust(feces_t6_18_lefse$X5, method = "BH")
+
+#create differential features file
+feces_t6_18_diff <- feces_t6_18_lefse %>% 
+  filter(BH <= 0.05) %>% 
+  select(X1)
+
+write_tsv(feces_t6_18_diff, col_names=F, path="time_diff_feces/t6_18_diff_feces.txt")
+```
+
+
+Combine Datasets:
+```{r, engine='bash'}
+
+#combine lists of differentially abundant asv for time
+echo -e "OTUID" | cat - time_diff_rumen/*.txt | sort | uniq > time_diff_rumen/rumen_time_diff_list.txt
+
+#combine lists of differentially abundant asv for site
+echo -e "OTUID" | cat - time_diff_feces/*.txt | sort | uniq > time_diff_feces/feces_time_diff_list.txt
+
+#format files
+#remove f_ (lefse adds f_ to asvs starting with numbers)
+#trt
+sed 's/f_//g' time_diff_rumen/rumen_time_diff_list.txt > time_diff_rumen/rumen_time_diff_list_final.txt
+
+#site
+sed 's/f_//g' time_diff_feces/feces_time_diff_list.txt > time_diff_feces/feces_time_diff_list_final.txt
+```
+
+Heat Map
+
+```{r}
+#load libraries
+library(tidyverse)
+library(data.table)
+library(Heatplus)
+library(vegan)
+library(gplots) 
+
+
+#Heat tree for differentially abundant ASV's in the rumen dataset
+#generate asv table
+rumen_table <-  read_tsv("exported/table_rarefied_rumen/feature-table.txt", skip=1) %>%
+  rename(OTUID="#OTU ID") 
+
+#transform to proportions
+rumen_table_df <- as.data.frame(rumen_table) 
+rownames(rumen_table_df) <- rumen_table_df[,1]
+rumen_table_df <- rumen_table_df[,-1]
+rumen_table_df_t <- t(rumen_table_df)
+rumen_table_prop <- rumen_table_df_t/rowSums(rumen_table_df_t)
+
+#format 
+rumen_table_prop_t <- t(rumen_table_prop)
+rumen_table_prop_t <- as.data.frame(rumen_table_prop_t)
+rumen_table_prop_t <- setDT(rumen_table_prop_t, keep.rownames=T)[] 
+names(rumen_table_prop_t)[1] <- "OTUID" 
+
+#list to  filter out 24h
+remove_12h <- read_tsv("metadata/metadata_feedfreq.txt") %>% 
+  rename(SampleID="#SampleID") %>% 
+  filter(time =="12" & type =="Rumen") %>% 
+  select(SampleID)
+
+rumen_table_prop_t <- as.data.frame(rumen_table_prop_t)
+drops <- remove_12h$SampleID
+rumen_table_prop_t <- rumen_table_prop_t[ , !(names(rumen_table_prop_t) %in% drops)]
+
+#generate asv table
+taxa_data <-  read_tsv("exported/gg_taxonomy/taxonomy.tsv") %>%
+  rename(OTUID="Feature ID", Taxonomy = Taxon) 
+
+#format tax_data  
+tax_genus <- taxa_data %>% 
+  select(OTUID, Taxonomy) %>% 
+  separate(col=Taxonomy,
+           into=(c("kingdom", "phylum", "class", "order", "family", "genus", "species")),
+           fill="right",
+           sep=";") %>% 
+  select("OTUID", "genus")
+
+tax_genus$genus <- gsub(" ", "", tax_genus$genus)
+tax_genus$genus <- gsub("g__", "", tax_genus$genus)
+tax_genus$genus <- gsub("^$", "Unclassified genus", tax_genus$genus)
+tax_genus$genus <- gsub("NA", "Unclassified genus", tax_genus$genus)  
+tax_genus$genus[is.na(tax_genus$genus)] <- "Unclassified genus"
+tax_genus$genus <- gsub("\\[", "", tax_genus$genus)
+tax_genus$genus <- gsub("\\]", "", tax_genus$genus)
+
+############################################################################################
+#generate time list
+rumen_time_list <-  read_tsv("time_diff_rumen/rumen_time_diff_list_final.txt")
+
+#join rumen_time_list and rumen_table_prop_t datasets
+rumen_time_data <- left_join(rumen_time_list, rumen_table_prop_t, by="OTUID") 
+
+#join rumen_time_tax_data and tax_genus datasets
+rumen_time_tax_data <- left_join(rumen_time_data, tax_genus, by="OTUID") 
+
+#format
+rumen_time_prop <- rumen_time_tax_data %>% 
+  select(-OTUID) %>% 
+  select(genus, everything()) 
+
+rumen_time_prop_t <- as.data.frame(t(rumen_time_prop), stringsAsFactors=F)
+
+colnames(rumen_time_prop_t) <- as.character(unlist(rumen_time_prop_t[1,])) 
+rumen_time_prop_t <- rumen_time_prop_t[-1,]
+col.nums <- c(1:195)
+rumen_time_prop_t[col.nums] <- sapply(rumen_time_prop_t[col.nums],as.numeric)
+names(rumen_time_prop_t) <- make.unique(names(rumen_time_prop_t), sep = ".")
+
+#heatmap
+#all differentially abundant asvs
+#color and dendograms
+scaleblackblue <- colorRampPalette(c("black", "#7CFC00"), space = "rgb")(100)
+data.dist <- vegdist(rumen_time_prop_t, method = "bray")
+row.clus <- hclust(data.dist, "aver")
+data.dist.g <- vegdist(t(rumen_time_prop_t), method = "bray")
+col.clus <- hclust(data.dist.g, "aver")
+
+############################################################################################
+metadata <- read_tsv("metadata/metadata_feedfreq.txt") %>% 
+  rename(OTUID="#SampleID") %>% 
+  slice(2:203) %>% 
+  na.omit() %>% 
+  filter(!time == "12")
+
+metadata <- metadata %>% 
+  mutate(var = if_else(time == "0", "black",
+                       if_else(time == "6", "red",
+                               if_else(time == "18", "green",  "purple"))))
+
+rumen_sample_list <-  colnames(rumen_table_prop_t)              
+rumen_sample_list_df <- as.data.frame(rumen_sample_list)
+rumen_sample_list_df <- as.data.frame(rumen_sample_list_df[-1,])
+names(rumen_sample_list_df)[1] <- "OTUID"
+
+#join 
+rumen_var_data <- left_join(rumen_sample_list_df, metadata, by = "OTUID") %>% 
+  select(OTUID, var)
+
+#join rumen_prop_t and rumen_var_data
+rumen_var_data_df <- as.data.frame(rumen_var_data)
+rownames(rumen_var_data_df) <- rumen_var_data_df [,1]
+rumen_var_data_df <- rumen_var_data_df[,-1]
+cbind(row.names(rumen_time_prop_t), rumen_var_data_df)
+
+#generate heatmap
+pdf("figures/Figure4A.pdf", height=8, width=9)
+heatmap.2(as.matrix(rumen_time_prop_t), Rowv=as.dendrogram(row.clus), Colv=as.dendrogram(col.clus), labCol="", xlab="Amplicon Sequence Variants", ylab="Samples", col=scaleblackblue, RowSideColors= rumen_var_data_df, trace="none", density.info="none", margins=c(2,5), lhei = c(2, 6))
+dev.off()
+
+
+#heatmap
+#most differentially abundant asvs
+maxab <- apply(rumen_time_prop_t, 2, max)
+head(maxab)
+
+#filter by abundance
+n1 <- names(which(maxab < 0.001))
+rumen_time_prop_abun <- rumen_time_prop_t[, -which(names(rumen_time_prop_t) %in% n1)]
+
+#color and dendograms
+scaleblackblue <- colorRampPalette(c("black", "#7CFC00"), space = "rgb")(100)
+data.dist <- vegdist(rumen_time_prop_t, method = "bray")
+row.clus <- hclust(data.dist, "aver")
+data.dist.g <- vegdist(t(rumen_time_prop_abun), method = "bray")
+col.clus <- hclust(data.dist.g, "aver")
+
+
+#generate heatmap
+pdf("figures/FigureS4A.pdf", height=8, width=9)
+heatmap.2(as.matrix(rumen_time_prop_abun), Rowv=as.dendrogram(row.clus), Colv=as.dendrogram(col.clus), xlab="Genus Rank", ylab="Samples", col=scaleblackblue, RowSideColors= rumen_var_data_df, trace="none", density.info="none", margins=c(10,5), lhei = c(2, 6))
+dev.off()
+
+
+############################################################################################
+
+#Heat tree for differentially abundant ASV's in the feces dataset
+#generate asv table
+feces_table <-  read_tsv("exported/table_rarefied_feces/feature-table.txt", skip=1) %>%
+  rename(OTUID="#OTU ID") 
+
+#transform to proportions
+feces_table_df <- as.data.frame(feces_table) 
+rownames(feces_table_df) <- feces_table_df[,1]
+feces_table_df <- feces_table_df[,-1]
+feces_table_df_t <- t(feces_table_df)
+feces_table_prop <- feces_table_df_t/rowSums(feces_table_df_t)
+
+#format 
+feces_table_prop_t <- t(feces_table_prop)
+feces_table_prop_t <- as.data.frame(feces_table_prop_t)
+feces_table_prop_t <- setDT(feces_table_prop_t, keep.rownames=T)[]
+names(feces_table_prop_t)[1] <- "OTUID" 
+
+#list to  filter out 24h
+remove_24h <- read_tsv("metadata/metadata_feedfreq.txt") %>% 
+  rename(SampleID="#SampleID") %>% 
+  filter(time =="24" & type =="Feces") %>% 
+  select(SampleID)
+
+feces_table_prop_t <- as.data.frame(feces_table_prop_t)
+drops <- remove_24h$SampleID
+feces_table_prop_t <- feces_table_prop_t[ , !(names(feces_table_prop_t) %in% drops)]
+
+#generate asv table
+taxa_data <-  read_tsv("exported/gg_taxonomy/taxonomy.tsv") %>%
+  rename(OTUID="Feature ID", Taxonomy = Taxon) 
+
+#format tax_data  
+tax_genus <- taxa_data %>% 
+  select(OTUID, Taxonomy) %>% 
+  separate(col=Taxonomy,
+           into=(c("kingdom", "phylum", "class", "order", "family", "genus", "species")),
+           fill="right",
+           sep=";") %>% 
+  select("OTUID", "genus")
+
+tax_genus$genus <- gsub(" ", "", tax_genus$genus)
+tax_genus$genus <- gsub("g__", "", tax_genus$genus)
+tax_genus$genus <- gsub("^$", "Unclassified genus", tax_genus$genus)
+tax_genus$genus <- gsub("NA", "Unclassified genus", tax_genus$genus)  
+tax_genus$genus[is.na(tax_genus$genus)] <- "Unclassified genus"
+tax_genus$genus <- gsub("\\[", "", tax_genus$genus)
+tax_genus$genus <- gsub("\\]", "", tax_genus$genus)
+
+############################################################################################
+#generate time list
+feces_time_list <-  read_tsv("time_diff_feces/feces_time_diff_list_final.txt")
+
+#join feces_time_list and feces_table_prop_t datasets
+feces_time_data <- left_join(feces_time_list, feces_table_prop_t, by="OTUID") 
+
+#join feces_time_tax_data and tax_genus datasets
+feces_time_tax_data <- left_join(feces_time_data, tax_genus, by="OTUID") 
+
+#format
+feces_time_prop <- feces_time_tax_data %>% 
+  select(-OTUID) %>% 
+  select(genus, everything())
+
+feces_time_prop_t <- as.data.frame(t(feces_time_prop), stringsAsFactors=F)
+
+
+colnames(feces_time_prop_t) <- as.character(unlist(feces_time_prop_t[1,])) 
+feces_time_prop_t <- feces_time_prop_t[-1,]
+col.nums <- c(1:302) 
+feces_time_prop_t[col.nums] <- sapply(feces_time_prop_t[col.nums],as.numeric)
+names(feces_time_prop_t) <- make.unique(names(feces_time_prop_t), sep = ".")
+
+#heatmap
+#all differentially abundant asvs
+#color and dendograms
+scaleblackblue <- colorRampPalette(c("black", "darkorange"), space = "rgb")(100)
+data.dist <- vegdist(feces_time_prop_t, method = "bray")
+row.clus <- hclust(data.dist, "aver")
+data.dist.g <- vegdist(t(feces_time_prop_t), method = "bray")
+col.clus <- hclust(data.dist.g, "aver")
+
+############################################################################################
+metadata <- read_tsv("metadata/metadata_feedfreq.txt") %>% 
+  rename(OTUID="#SampleID") %>% 
+  slice(2:203) %>% 
+  na.omit() %>% 
+  filter(!time == "24")
+
+metadata <- metadata %>% 
+  mutate(var = if_else(time == "0", "black",
+                       if_else(time == "6", "red",
+                               if_else(time == "12", "blue",  "green"))))
+
+feces_sample_list <-  colnames(feces_table_prop_t)              
+feces_sample_list_df <- as.data.frame(feces_sample_list)
+feces_sample_list_df <- as.data.frame(feces_sample_list_df[-1,])
+names(feces_sample_list_df)[1] <- "OTUID"
+
+#join 
+feces_var_data <- left_join(feces_sample_list_df, metadata, by = "OTUID") %>% 
+  select(OTUID, var)
+
+#join feces_prop_t and feces_var_data
+feces_var_data_df <- as.data.frame(feces_var_data)
+rownames(feces_var_data_df) <- feces_var_data_df [,1]
+feces_var_data_df <- feces_var_data_df[,-1]
+cbind(row.names(feces_time_prop_t), feces_var_data_df)
+
+#generate heatmap
+pdf("Figures/heatmap_time_diff_all_feces.pdf", height=8, width=9)
+heatmap.2(as.matrix(feces_time_prop_t), Rowv=as.dendrogram(row.clus), Colv=as.dendrogram(col.clus), labCol="", xlab="Amplicon Sequence Variants", ylab="Samples", col=scaleblackblue, RowSideColors= feces_var_data_df, trace="none", density.info="none", margins=c(2,5), lhei = c(2, 6))
+dev.off()
+
+
+#heatmap
+maxab <- apply(feces_time_prop_t, 2, max)
+head(maxab)
+
+n1 <- names(which(maxab < 0.002))
+feces_time_prop_abun <- feces_time_prop_t[, -which(names(feces_time_prop_t) %in% n1)]
+
+#color and dendograms
+scaleblackblue <- colorRampPalette(c("black", "darkorange"), space = "rgb")(100)
+data.dist <- vegdist(feces_time_prop_t, method = "bray")
+row.clus <- hclust(data.dist, "aver")
+data.dist.g <- vegdist(t(feces_time_prop_abun), method = "bray")
+col.clus <- hclust(data.dist.g, "aver")
+
+
+#generate heatmap
+pdf("figures/FigureS4B.pdf", height=8, width=9)
+heatmap.2(as.matrix(feces_time_prop_abun), Rowv=as.dendrogram(row.clus), Colv=as.dendrogram(col.clus), xlab="Genus Rank", ylab="Samples", col=scaleblackblue, RowSideColors=feces_var_data_df, trace= "none", density.info="none", margins=c(10,5), lhei = c(2, 6))
+dev.off()
+```
+
