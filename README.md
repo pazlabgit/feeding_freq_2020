@@ -1,7 +1,7 @@
 # feeding_freq_2020
 
 The following repository can be used to recreate results presented in the manuscript 
-"Influence of feeding frequency on behavioral patterns and rumen and hindgut bacterial composition 
+"Influence of industry standard feeding frequencies on behavioral patterns and rumen and fecal bacterial communities 
 in Holstein and Jersey cows" by: De La Guardia-Hidrogo and Paz. 
 
 Analysis was done as follows: 
