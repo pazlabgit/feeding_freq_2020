@@ -1,10 +1,10 @@
 # feeding_freq_2020
 
 The following repository can be used to recreate results presented in the manuscript 
-"Influence of Feeding frequency and behavioral patterns and rumen and hindgut bacterial community composition 
+"Influence of feeding frequency on behavioral patterns and rumen and hindgut bacterial composition 
 in Holstein and Jersey cows" by: De La Guardia-Hidrogo and Paz. 
 
-Analysis were done as follows. 
+Analysis was done as follows: 
 ```
 1. import_fastq.Rmd
 2. qc_asvtable_deblur.Rmd
@@ -20,4 +20,4 @@ Analysis were done as follows.
 12. lefse_files.Rmd
 13. diff_asv_heatmap.Rmd
 ```
-Raw sequences are available at the NCBI Sequence Read Archive (SRA) under the accession no. SRP271418
+Raw sequences are available at the NCBI Sequence Read Archive (SRA) under the accession no. SRP271418.
