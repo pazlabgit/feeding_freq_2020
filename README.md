@@ -2,7 +2,7 @@
 
 The following repository can be used to recreate results presented in the manuscript 
 "Influence of industry standard feeding frequencies on behavioral patterns and rumen and fecal bacterial communities 
-in Holstein and Jersey cows" by: De La Guardia-Hidrogo and Paz. 
+in Holstein and Jersey cows" by V. M. De La Guardia-Hidrogo and H. A. Paz. 
 
 Analysis was done as follows: 
 ```
