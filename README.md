@@ -1,4 +1,4 @@
-# feeding_freq_2020
+# feeding_freq_2021
 
 The following repository can be used to recreate results presented in the manuscript 
 "Influence of industry standard feeding frequencies on behavioral patterns and rumen and fecal bacterial communities 
