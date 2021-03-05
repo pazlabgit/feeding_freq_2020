@@ -1,8 +1,7 @@
 # feeding_freq_2021
 
-The following repository can be used to recreate results presented in the manuscript 
-"Influence of industry standard feeding frequencies on behavioral patterns and rumen and fecal bacterial communities 
-in Holstein and Jersey cows" by V. M. De La Guardia-Hidrogo and H. A. Paz. 
+The following repository can be used to recreate results presented in the following manuscript:
+De La Guardia-Hidrogo VM, Paz HA, (2021). Influence of industry standard feeding frequencies on behavioral patterns and rumen and fecal bacterial communities in Holstein and Jersey cows. PLOS ONE. 16(3): e0248147. https://doi.org/10.1371/journal.pone.0248147
 
 Analysis was done as follows: 
 ```
